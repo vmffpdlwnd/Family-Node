@@ -40,6 +40,7 @@ const request = async (path, { method = 'GET', body, headers = {} } = {}) => {
 };
 
 export const login = (payload) => request('/auth/login', { method: 'POST', body: payload });
+export const register = (payload) => request('/auth/register', { method: 'POST', body: payload });
 export const getMe = () => request('/auth/me');
 
 export const getPosts = () => request('/posts');
