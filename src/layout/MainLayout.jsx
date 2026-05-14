@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layout, Menu, theme, Button } from 'antd';
+import { Layout, Menu, theme, Button, Typography } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   BarsOutlined,
@@ -10,6 +10,7 @@ import {
   MenuUnfoldOutlined,
 } from '@ant-design/icons';
 import ChatWidget from '../components/ChatWidget';
+import useAuthStore from '../store/authStore';
 
 const { Header, Content, Sider } = Layout;
 
@@ -22,6 +23,8 @@ const MainLayout = ({ children }) => {
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
+
+  const { user, clearAuth } = useAuthStore();
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -106,9 +109,26 @@ const MainLayout = ({ children }) => {
       {menuItems.find(item => item.key === location.pathname)?.label || 'Family-Node'}
     </span>
   </div>
-  <Button type="primary" onClick={() => {}}>
-    로그인
-  </Button>
+  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+    {user ? (
+      <Typography.Text strong>{user.username}님</Typography.Text>
+    ) : (
+      <Typography.Text type="secondary">로그인이 필요합니다.</Typography.Text>
+    )}
+    <Button
+      type="primary"
+      onClick={() => {
+        if (user) {
+          clearAuth();
+          navigate('/');
+        } else {
+          navigate('/login');
+        }
+      }}
+    >
+      {user ? '로그아웃' : '로그인'}
+    </Button>
+  </div>
 </Header>
         
         <Content style={{ margin: '24px 16px', padding: 24, minHeight: 280, background: colorBgContainer, borderRadius: borderRadiusLG }}>

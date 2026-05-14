@@ -9,6 +9,7 @@ import BoardWrite from './pages/BoardWrite';
 import Schedule from './pages/Schedule';
 import Chat from './pages/Chat';
 import Settings from './pages/Settings';
+import Login from './pages/Login';
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ function App() {
             <Route path="/schedule" element={<Schedule />} />
             <Route path="/chat" element={<Chat />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/login" element={<Login />} />
           </Routes>
         </MainLayout>
       </BrowserRouter>
