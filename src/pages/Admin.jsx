@@ -1,8 +1,8 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Card, Row, Col, Typography, Button, Result, Spin } from 'antd';
-import { DatabaseOutlined, CalendarOutlined, MessageOutlined, HomeOutlined } from '@ant-design/icons';
-import { getPosts, getSchedules, getChats } from '../api/apiClient';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, Row, Col, Typography, Button, Result, Spin, List, Tag, Space, message, Divider } from 'antd';
+import { DatabaseOutlined, CalendarOutlined, MessageOutlined, HomeOutlined, TeamOutlined } from '@ant-design/icons';
+import { getPosts, getSchedules, getChats, getUsers, updateUserRole } from '../api/apiClient';
 import useAuthStore from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 
@@ -10,6 +10,7 @@ const { Title, Paragraph, Text } = Typography;
 
 const Admin = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user } = useAuthStore();
 
   if (!user) {
@@ -45,8 +46,31 @@ const Admin = () => {
   const { data: posts = [], isLoading: postsLoading } = useQuery({ queryKey: ['admin-posts'], queryFn: getPosts });
   const { data: schedules = [], isLoading: schedulesLoading } = useQuery({ queryKey: ['admin-schedules'], queryFn: getSchedules });
   const { data: chats = [], isLoading: chatsLoading } = useQuery({ queryKey: ['admin-chats'], queryFn: getChats, refetchInterval: 10000 });
+  const { data: users = [], isLoading: usersLoading, isError: usersError, error: usersErrorDetails, refetch: refetchUsers } = useQuery({
+    queryKey: ['admin-users'],
+    queryFn: getUsers,
+    enabled: user.role === 'admin',
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+  });
 
-  const loading = postsLoading || schedulesLoading || chatsLoading;
+  const totalUsers = users.length;
+  const approvedUsers = users.filter((account) => account.role === 'member' || account.role === 'admin').length;
+  const accessRate = totalUsers ? Math.round((approvedUsers / totalUsers) * 100) : 0;
+
+  const { mutate: promoteUser, isLoading: isPromoting } = useMutation({
+    mutationFn: ({ id }) => updateUserRole(id, 'member'),
+    onSuccess: () => {
+      message.success('게스트를 멤버로 승급했습니다.');
+      queryClient.invalidateQueries(['users']);
+    },
+    onError: (error) => {
+      message.error(error.message || '역할 변경에 실패했습니다.');
+    },
+  });
+
+  const loading = postsLoading || schedulesLoading || chatsLoading || usersLoading;
 
   return (
     <div style={{ padding: 24 }}>
@@ -54,45 +78,46 @@ const Admin = () => {
         <Col xs={24}>
           <Card style={{ borderRadius: 16, padding: 28 }}>
             <Title level={3}>관리자 대시보드</Title>
-            <Paragraph>
-              관리자 권한으로 가족 사이트의 데이터 요약과 빠른 이동 버튼을 확인할 수 있습니다.
-            </Paragraph>
             <Text type="secondary">현재 계정: {user.username} ({user.role})</Text>
           </Card>
         </Col>
 
-        <Col xs={24} md={8}>
+        <Col xs={24} md={6}>
           <Card title="게시판" style={{ borderRadius: 16 }}>
-            {loading ? <Spin /> : <Text strong>{posts.length}</Text>}
-            <Paragraph style={{ marginTop: 12 }}>
-              전체 게시글 수를 확인하고 게시판 페이지로 이동하세요.
-            </Paragraph>
-            <Button type="primary" icon={<DatabaseOutlined />} onClick={() => navigate('/board')}>
-              게시판 관리
+            <Paragraph style={{ marginBottom: 8 }}>게시판 전체 게시글 수</Paragraph>
+            {loading ? <Spin /> : <Text strong style={{ fontSize: 24 }}>{posts.length}</Text>}
+            <Button type="primary" icon={<DatabaseOutlined />} onClick={() => navigate('/board')} style={{ marginTop: 16 }}>
+              게시판 보기
             </Button>
           </Card>
         </Col>
 
-        <Col xs={24} md={8}>
+        <Col xs={24} md={6}>
           <Card title="일정" style={{ borderRadius: 16 }}>
-            {loading ? <Spin /> : <Text strong>{schedules.length}</Text>}
-            <Paragraph style={{ marginTop: 12 }}>
-              전체 일정 수를 확인하고 일정 페이지로 이동하세요.
-            </Paragraph>
-            <Button icon={<CalendarOutlined />} onClick={() => navigate('/schedule')}>
-              일정 관리
+            <Paragraph style={{ marginBottom: 8 }}>등록된 가족 일정 개수</Paragraph>
+            {loading ? <Spin /> : <Text strong style={{ fontSize: 24 }}>{schedules.length}</Text>}
+            <Button icon={<CalendarOutlined />} onClick={() => navigate('/schedule')} style={{ marginTop: 16 }}>
+              일정 보기
             </Button>
           </Card>
         </Col>
 
-        <Col xs={24} md={8}>
+        <Col xs={24} md={6}>
           <Card title="채팅" style={{ borderRadius: 16 }}>
-            {loading ? <Spin /> : <Text strong>{chats.length}</Text>}
-            <Paragraph style={{ marginTop: 12 }}>
-              채팅 메시지 수를 확인하고 채팅 페이지로 이동하세요.
-            </Paragraph>
-            <Button icon={<MessageOutlined />} onClick={() => navigate('/chat')}>
-              채팅 관리
+            <Paragraph style={{ marginBottom: 8 }}>채팅 메시지 합계</Paragraph>
+            {loading ? <Spin /> : <Text strong style={{ fontSize: 24 }}>{chats.length}</Text>}
+            <Button icon={<MessageOutlined />} onClick={() => navigate('/chat')} style={{ marginTop: 16 }}>
+              채팅 보기
+            </Button>
+          </Card>
+        </Col>
+
+        <Col xs={24} md={6}>
+          <Card title="접속율" style={{ borderRadius: 16 }}>
+            <Paragraph style={{ marginBottom: 8 }}>로그인한 멤버 접속율</Paragraph>
+            {loading ? <Spin /> : <Text strong style={{ fontSize: 24 }}>{accessRate}%</Text>}
+            <Button icon={<TeamOutlined />} onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })} style={{ marginTop: 16 }}>
+              사용자 관리
             </Button>
           </Card>
         </Col>
@@ -101,11 +126,60 @@ const Admin = () => {
       <Row gutter={[24, 24]} style={{ marginTop: 24 }}>
         <Col xs={24}>
           <Card style={{ borderRadius: 16 }}>
-            <Title level={4}>관리자 팁</Title>
-            <Paragraph>
-              현재 페이지는 관리자 전용 대시보드입니다. 페이지를 확장하여 사용자 관리, 신고 처리, 통계 확인 등 추가 기능을 만들 수 있습니다.
-            </Paragraph>
-            <Button icon={<HomeOutlined />} onClick={() => navigate('/')}>홈으로 이동</Button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 16 }}>
+              <div>
+                <Title level={4}>사용자 목록</Title>
+                <Paragraph>현재 등록된 사용자와 역할 상태를 확인하고, 게스트를 멤버로 승급할 수 있습니다.</Paragraph>
+              </div>
+              <Button onClick={() => refetchUsers()} loading={usersLoading}>
+                사용자 새로고침
+              </Button>
+            </div>
+
+            {usersError ? (
+              <Text type="danger">사용자 목록을 불러오는 중 오류가 발생했습니다: {usersErrorDetails?.message || '알 수 없는 오류'}</Text>
+            ) : (
+              <List
+                dataSource={users}
+                loading={usersLoading}
+                renderItem={(account) => (
+                  <List.Item
+                    actions={
+                      account.role === 'guest'
+                        ? [
+                            <Button
+                              type="primary"
+                              key="promote"
+                              loading={isPromoting}
+                              onClick={() => promoteUser({ id: account.id })}
+                            >
+                              멤버로 승급
+                            </Button>,
+                          ]
+                        : []
+                    }
+                  >
+                    <List.Item.Meta
+                      title={account.username}
+                      description={
+                        <Space size="small">
+                          <Tag color={account.role === 'admin' ? 'red' : account.role === 'member' ? 'green' : 'default'}>
+                            {account.role}
+                          </Tag>
+                          <Text type="secondary">{new Date(account.created_at).toLocaleDateString()}</Text>
+                        </Space>
+                      }
+                    />
+                  </List.Item>
+                )}
+                locale={{ emptyText: '등록된 사용자가 없습니다.' }}
+              />
+            )}
+
+            <Divider />
+            <Button icon={<HomeOutlined />} onClick={() => navigate('/')}>
+              홈으로 이동
+            </Button>
           </Card>
         </Col>
       </Row>

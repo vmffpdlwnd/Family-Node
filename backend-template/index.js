@@ -7,6 +7,7 @@ import authRouter from './routes/auth.js';
 import postsRouter from './routes/posts.js';
 import schedulesRouter from './routes/schedules.js';
 import chatsRouter from './routes/chats.js';
+import roomsRouter from './routes/rooms.js';
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 app.use('/api/auth', authRouter);
 app.use('/api/posts', postsRouter);
 app.use('/api/schedules', schedulesRouter);
+app.use('/api/rooms', roomsRouter);
 app.use('/api/chats', chatsRouter);
 
 const httpServer = createServer(app);

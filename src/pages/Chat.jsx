@@ -1,25 +1,31 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, Typography, List, Button, Space, Input, Divider, message, Spin } from 'antd';
-import { MessageOutlined, ArrowLeftOutlined } from '@ant-design/icons';
-import { getChats, createChat } from '../api/apiClient';
+import { Card, Typography, List, Button, Space, Input, Divider, message, Spin, Alert, Popconfirm } from 'antd';
+import { ArrowLeftOutlined } from '@ant-design/icons';
+import { getChats, createChat, deleteChat } from '../api/apiClient';
+import useAuthStore from '../store/authStore';
 
 const { Title, Paragraph, Text } = Typography;
 
 const Chat = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
   const [selectedRoom, setSelectedRoom] = useState('family');
   const [messageText, setMessageText] = useState('');
+
+  const isGuest = !user || user.role === 'guest';
+  const canAccess = user && (user.role === 'member' || user.role === 'admin');
 
   const { data: chatData = [], isLoading } = useQuery({
     queryKey: ['chats'],
     queryFn: getChats,
     refetchInterval: 5000,
+    enabled: canAccess,
   });
 
   const messages = chatData || [];
 
-  const { mutate, isLoading: isSending } = useMutation({
+  const { mutate: sendMessage, isLoading: isSending } = useMutation({
     mutationFn: createChat,
     onSuccess: () => {
       message.success('메시지가 전송되었습니다.');
@@ -31,10 +37,40 @@ const Chat = () => {
     },
   });
 
+  const { mutate: removeMessage, isLoading: isDeleting } = useMutation({
+    mutationFn: deleteChat,
+    onSuccess: () => {
+      message.success('메시지가 삭제되었습니다.');
+      queryClient.invalidateQueries(['chats']);
+    },
+    onError: (error) => {
+      message.error(error.message || '메시지 삭제에 실패했습니다.');
+    },
+  });
+
   const handleSend = () => {
     if (!messageText.trim()) return;
-    mutate({ message: messageText.trim() });
+    sendMessage({ message: messageText.trim() });
   };
+
+  if (isGuest) {
+    return (
+      <div style={{ padding: 24 }}>
+        <Card style={{ borderRadius: 16 }}>
+          <Space direction="vertical" style={{ width: '100%' }} size="large">
+            <Title level={3}>💬 가족 채팅방</Title>
+            <Paragraph>게스트는 채팅 DB를 불러오지 않습니다. 로그인한 멤버만 채팅을 볼 수 있습니다.</Paragraph>
+            <Alert
+              message="채팅 이용 안내"
+              description="멤버 계정으로 로그인하면 채팅 목록에 접속하고 메시지를 전송할 수 있습니다."
+              type="info"
+              showIcon
+            />
+          </Space>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: 24 }}>
@@ -55,21 +91,46 @@ const Chat = () => {
             ) : messages.length ? (
               <List
                 dataSource={messages}
-                renderItem={(msg) => (
-                  <List.Item key={msg.id} style={{ padding: '12px 0' }}>
-                    <List.Item.Meta
-                      title={<Text strong>{msg.username || msg.user_id || '가족'}</Text>}
-                      description={
-                        <>
-                          <Text>{msg.message || msg.text}</Text>
-                          <div style={{ marginTop: 6 }}>
-                            <Text type="secondary">{msg.created_at ? new Date(msg.created_at).toLocaleString() : ''}</Text>
-                          </div>
-                        </>
+                renderItem={(msg) => {
+                  const canDelete = user && msg.user_id === user.id;
+                  return (
+                    <List.Item
+                      key={msg.id}
+                      actions={
+                        canDelete
+                          ? [
+                              <Popconfirm
+                                key="delete"
+                                title="메시지를 삭제하시겠습니까?"
+                                onConfirm={() => removeMessage(msg.id)}
+                                okText="삭제"
+                                cancelText="취소"
+                              >
+                                <Button danger size="small" loading={isDeleting}>
+                                  삭제
+                                </Button>
+                              </Popconfirm>,
+                            ]
+                          : []
                       }
-                    />
-                  </List.Item>
-                )}
+                      style={{ padding: '12px 0' }}
+                    >
+                      <List.Item.Meta
+                        title={<Text strong>{msg.username || msg.user_id || '가족'}</Text>}
+                        description={
+                          <>
+                            <Text>{msg.message || msg.text}</Text>
+                            <div style={{ marginTop: 6 }}>
+                              <Text type="secondary">
+                                {msg.created_at ? new Date(msg.created_at).toLocaleString() : ''}
+                              </Text>
+                            </div>
+                          </>
+                        }
+                      />
+                    </List.Item>
+                  );
+                }}
               />
             ) : (
               <Text type="secondary">아직 메시지가 없습니다. 아래에서 전송해 보세요.</Text>

@@ -82,7 +82,7 @@ router.post('/login', async (req, res) => {
 
 router.get('/me', authenticateToken, async (req, res) => {
   try {
-    const [users] = await pool.query('SELECT id, username, role, created_at FROM users WHERE id = ?', [req.user.id]);
+    const [users] = await pool.query('SELECT id, username, role, created_at, last_login FROM users WHERE id = ?', [req.user.id]);
     if (!users.length) {
       return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
     }
@@ -90,6 +90,44 @@ router.get('/me', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: '사용자 정보를 불러오는 중 오류가 발생했습니다.' });
+  }
+});
+
+router.get('/users', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: '관리자 권한이 필요합니다.' });
+  }
+
+  try {
+    const [users] = await pool.query('SELECT id, username, role, created_at, last_login FROM users ORDER BY created_at ASC');
+    return res.json(users);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: '사용자 목록을 불러오는 중 오류가 발생했습니다.' });
+  }
+});
+
+router.put('/users/:id/role', authenticateToken, async (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: '관리자 권한이 필요합니다.' });
+  }
+
+  const { role } = req.body;
+  const allowedRoles = ['guest', 'member', 'admin'];
+  if (!allowedRoles.includes(role)) {
+    return res.status(400).json({ error: '유효하지 않은 역할입니다.' });
+  }
+
+  try {
+    const [result] = await pool.query('UPDATE users SET role = ? WHERE id = ?', [role, req.params.id]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
+    }
+    const [users] = await pool.query('SELECT id, username, role, created_at FROM users WHERE id = ?', [req.params.id]);
+    return res.json(users[0]);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: '사용자 역할 변경 중 오류가 발생했습니다.' });
   }
 });
 

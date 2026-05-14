@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, Typography, Input, Select, Button, Space, message } from 'antd';
+import { Card, Typography, Input, Select, Button, Space, message, Result } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { createPost } from '../api/apiClient';
+import useAuthStore from '../store/authStore';
 
 const { Title, Paragraph } = Typography;
 const { Option } = Select;
@@ -10,9 +11,12 @@ const { Option } = Select;
 const BoardWrite = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuthStore();
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('일반');
   const [content, setContent] = useState('');
+
+  const canWrite = user && user.role !== 'guest';
 
   const { mutate, isLoading } = useMutation({
     mutationFn: createPost,
@@ -38,6 +42,23 @@ const BoardWrite = () => {
       category,
     });
   };
+
+  if (!canWrite) {
+    return (
+      <div style={{ padding: 24 }}>
+        <Result
+          status="403"
+          title="작성 권한이 없습니다"
+          subTitle="멤버 계정으로 로그인해야 게시글을 작성할 수 있습니다."
+          extra={[
+            <Button type="primary" key="login" onClick={() => navigate('/login')}>
+              로그인하러 가기
+            </Button>,
+          ]}
+        />
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: 24 }}>

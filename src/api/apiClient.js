@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://family-node.duckdns.org/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? '/api';
 
 const getStoredToken = () => {
   if (typeof window === 'undefined') return null;
@@ -45,9 +45,19 @@ export const getMe = () => request('/auth/me');
 
 export const getPosts = () => request('/posts');
 export const createPost = (payload) => request('/posts', { method: 'POST', body: payload });
+export const deletePost = (postId) => request(`/posts/${postId}`, { method: 'DELETE' });
 
 export const getSchedules = () => request('/schedules');
 export const createSchedule = (payload) => request('/schedules', { method: 'POST', body: payload });
+export const deleteSchedule = (scheduleId) => request(`/schedules/${scheduleId}`, { method: 'DELETE' });
 
-export const getChats = () => request('/chats');
+export const getRooms = () => request('/rooms');
+export const createRoom = (payload) => request('/rooms', { method: 'POST', body: payload });
+export const deleteRoom = (roomId) => request(`/rooms/${roomId}`, { method: 'DELETE' });
+
+export const getChats = (roomId) => request(`/chats${roomId ? `?room_id=${encodeURIComponent(roomId)}` : ''}`);
 export const createChat = (payload) => request('/chats', { method: 'POST', body: payload });
+export const deleteChat = (chatId) => request(`/chats/${chatId}`, { method: 'DELETE' });
+
+export const getUsers = () => request('/auth/users');
+export const updateUserRole = (userId, role) => request(`/auth/users/${userId}/role`, { method: 'PUT', body: { role } });
