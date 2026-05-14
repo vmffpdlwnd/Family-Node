@@ -8,6 +8,7 @@ import {
   SettingOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 import ChatWidget from '../components/ChatWidget';
 import useAuthStore from '../store/authStore';
@@ -43,9 +44,12 @@ const MainLayout = ({ children }) => {
     if (isMobile) {
       items.push({ key: '/chat', icon: <MessageOutlined />, label: '가족 채팅방' });
     }
+    if (user?.role === 'admin') {
+      items.push({ key: '/admin', icon: <UserOutlined />, label: '관리자' });
+    }
     items.push({ key: '/settings', icon: <SettingOutlined />, label: '설정' });
     return items;
-  }, [isMobile]);
+  }, [isMobile, user]);
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
