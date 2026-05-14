@@ -1,118 +1,93 @@
 import React, { useState } from 'react';
-import { Card, Typography, List, Button, Space, Input, Divider } from 'antd';
-import { MessageOutlined, ArrowLeftOutlined, PlusOutlined } from '@ant-design/icons';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, Typography, List, Button, Space, Input, Divider, message, Spin } from 'antd';
+import { MessageOutlined, ArrowLeftOutlined } from '@ant-design/icons';
+import { getChats, createChat } from '../api/apiClient';
 
 const { Title, Paragraph, Text } = Typography;
 
 const Chat = () => {
-  const [rooms, setRooms] = useState([
-    {
-      id: 'family',
-      title: '가족 채팅방',
-      description: '가족 전용 채팅방',
-      messages: [],
+  const queryClient = useQueryClient();
+  const [selectedRoom, setSelectedRoom] = useState('family');
+  const [messageText, setMessageText] = useState('');
+
+  const { data: chatData = [], isLoading } = useQuery({
+    queryKey: ['chats'],
+    queryFn: getChats,
+    refetchInterval: 5000,
+  });
+
+  const messages = chatData || [];
+
+  const { mutate, isLoading: isSending } = useMutation({
+    mutationFn: createChat,
+    onSuccess: () => {
+      message.success('메시지가 전송되었습니다.');
+      setMessageText('');
+      queryClient.invalidateQueries(['chats']);
     },
-  ]);
-  const [selectedRoom, setSelectedRoom] = useState(null);
-  const [message, setMessage] = useState('');
-  const [newRoomTitle, setNewRoomTitle] = useState('');
+    onError: (error) => {
+      message.error(error.message || '메시지 전송에 실패했습니다.');
+    },
+  });
 
   const handleSend = () => {
-    if (!selectedRoom || !message.trim()) return;
-    setRooms((prev) =>
-      prev.map((room) =>
-        room.id === selectedRoom.id
-          ? {
-              ...room,
-              messages: [
-                ...room.messages,
-                { id: Date.now().toString(), text: message.trim(), sender: '나', time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
-              ],
-            }
-          : room,
-      ),
-    );
-    setMessage('');
-  };
-
-  const handleCreateRoom = () => {
-    if (!newRoomTitle.trim()) return;
-    const newRoom = {
-      id: Date.now().toString(),
-      title: newRoomTitle.trim(),
-      description: '새 채팅방',
-      messages: [],
-    };
-    setRooms((prev) => [...prev, newRoom]);
-    setNewRoomTitle('');
+    if (!messageText.trim()) return;
+    mutate({ message: messageText.trim() });
   };
 
   return (
     <div style={{ padding: 24 }}>
       <Card style={{ borderRadius: 16 }}>
         <Space direction="vertical" style={{ width: '100%' }} size="large">
-          {!selectedRoom ? (
-            <>
-              <Title level={3}>💬 가족 채팅방</Title>
-              <Paragraph>카톡처럼 채팅방을 선택하고 대화를 시작하세요.</Paragraph>
+          <Title level={3}>💬 가족 채팅방</Title>
+          <Paragraph>클라우드 백엔드와 연결된 채팅 메시지를 확인하고 전송합니다.</Paragraph>
+
+          <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => setSelectedRoom('family')}>
+            가족 채팅방으로
+          </Button>
+
+          <div style={{ minHeight: 320, marginBottom: 16, borderRadius: 16, background: '#f7f7f7', padding: 20 }}>
+            {isLoading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                <Spin />
+              </div>
+            ) : messages.length ? (
               <List
-                itemLayout="horizontal"
-                dataSource={rooms}
-                renderItem={(item) => (
-                  <List.Item onClick={() => setSelectedRoom(item)} style={{ cursor: 'pointer' }}>
-                    <List.Item.Meta title={item.title} description={item.description} />
+                dataSource={messages}
+                renderItem={(msg) => (
+                  <List.Item key={msg.id} style={{ padding: '12px 0' }}>
+                    <List.Item.Meta
+                      title={<Text strong>{msg.username || msg.user_id || '가족'}</Text>}
+                      description={
+                        <>
+                          <Text>{msg.message || msg.text}</Text>
+                          <div style={{ marginTop: 6 }}>
+                            <Text type="secondary">{msg.created_at ? new Date(msg.created_at).toLocaleString() : ''}</Text>
+                          </div>
+                        </>
+                      }
+                    />
                   </List.Item>
                 )}
               />
-              <Space style={{ width: '100%' }}>
-                <Input
-                  value={newRoomTitle}
-                  onChange={(event) => setNewRoomTitle(event.target.value)}
-                  placeholder="새 채팅방 제목"
-                />
-                <Button type="primary" icon={<PlusOutlined />} onClick={handleCreateRoom}>
-                  채팅방 추가
-                </Button>
-              </Space>
-            </>
-          ) : (
-            <>
-              <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => setSelectedRoom(null)}>
-                채팅방 목록으로
-              </Button>
-              <Title level={4}>{selectedRoom.title}</Title>
-              <Paragraph type="secondary">{selectedRoom.description}</Paragraph>
-              <Divider />
-              <div style={{ minHeight: 240, marginBottom: 16, borderRadius: 16, background: '#f7f7f7', padding: 20 }}>
-                {selectedRoom.messages.length ? (
-                  selectedRoom.messages.map((msg) => (
-                    <div key={msg.id} className={`chat-message-row ${msg.sender === '나' ? 'me' : ''}`}> 
-                      <div className="chat-message-bubble">{msg.text}</div>
-                      <div className="chat-message-meta">
-                        <Text type="secondary">{msg.sender}</Text>
-                        <Text type="secondary" className="chat-message-time">
-                          {msg.time}
-                        </Text>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <Text type="secondary">아직 채팅이 없습니다. 메시지를 보내보세요.</Text>
-                )}
-              </div>
-              <Space style={{ width: '100%' }}>
-                <Input
-                  value={message}
-                  onChange={(event) => setMessage(event.target.value)}
-                  placeholder="메시지 입력..."
-                  onPressEnter={handleSend}
-                />
-                <Button type="primary" onClick={handleSend}>
-                  전송
-                </Button>
-              </Space>
-            </>
-          )}
+            ) : (
+              <Text type="secondary">아직 메시지가 없습니다. 아래에서 전송해 보세요.</Text>
+            )}
+          </div>
+
+          <Divider />
+          <Space style={{ width: '100%' }}>
+            <Input
+              value={messageText}
+              onChange={(event) => setMessageText(event.target.value)}
+              placeholder="메시지를 입력하세요..."
+              onPressEnter={handleSend}
+            />
+            <Button type="primary" onClick={handleSend} loading={isSending}>
+              전송
+            </Button>
+          </Space>
         </Space>
       </Card>
     </div>

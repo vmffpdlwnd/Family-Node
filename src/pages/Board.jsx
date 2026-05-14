@@ -1,20 +1,38 @@
-import React from 'react';
-import { Card, Row, Col, Button, Input, Table, Typography } from 'antd';
+﻿import React, { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Card, Row, Col, Button, Input, Table, Typography, Spin } from 'antd';
 import { SearchOutlined, PlusOutlined, SortAscendingOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { getPosts } from '../api/apiClient';
 
 const { Title } = Typography;
 
-const columns = [
-  { title: '제목', dataIndex: 'title', key: 'title' },
-  { title: '작성자', dataIndex: 'author', key: 'author', width: 120 },
-  { title: '카테고리', dataIndex: 'category', key: 'category', width: 120 },
-  { title: '작성일', dataIndex: 'date', key: 'date', width: 140 },
-  { title: '조회수', dataIndex: 'views', key: 'views', width: 100, align: 'right' },
-];
-
 const Board = () => {
   const navigate = useNavigate();
+  const { data = [], isLoading, isError } = useQuery({
+    queryKey: ['posts'],
+    queryFn: getPosts,
+  });
+
+  const columns = useMemo(
+    () => [
+      { title: '제목', dataIndex: 'title', key: 'title' },
+      { title: '작성자', dataIndex: 'author', key: 'author', width: 120 },
+      { title: '카테고리', dataIndex: 'category', key: 'category', width: 120 },
+      { title: '작성일', dataIndex: 'date', key: 'date', width: 160 },
+      { title: '조회수', dataIndex: 'views', key: 'views', width: 100, align: 'right' },
+    ],
+    [],
+  );
+
+  const dataSource = data.map((item) => ({
+    key: item.id,
+    title: item.title,
+    author: item.username || item.author || '익명',
+    category: item.category || '일반',
+    date: item.created_at ? new Date(item.created_at).toLocaleString() : '-',
+    views: item.views ?? 0,
+  }));
 
   return (
     <div>
@@ -43,13 +61,23 @@ const Board = () => {
       </Card>
 
       <Card style={{ borderRadius: 16 }} bodyStyle={{ padding: 0 }}>
-        <Table
-          columns={columns}
-          dataSource={[]}
-          pagination={{ pageSize: 10 }}
-          rowKey="title"
-          locale={{ emptyText: '등록된 게시글이 없습니다.' }}
-        />
+        {isLoading ? (
+          <div style={{ padding: 40, textAlign: 'center' }}>
+            <Spin />
+          </div>
+        ) : isError ? (
+          <div style={{ padding: 40, textAlign: 'center', color: '#ff4d4f' }}>
+            게시글을 불러오는 중 오류가 발생했습니다.
+          </div>
+        ) : (
+          <Table
+            columns={columns}
+            dataSource={dataSource}
+            pagination={{ pageSize: 10 }}
+            rowKey="key"
+            locale={{ emptyText: '등록된 게시글이 없습니다.' }}
+          />
+        )}
       </Card>
     </div>
   );

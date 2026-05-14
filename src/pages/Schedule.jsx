@@ -1,30 +1,69 @@
-import React, { useState } from 'react';
-import { Card, Row, Col, Calendar, Typography, Input, Button, List, Space } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, Row, Col, Calendar, Typography, Input, Button, List, Space, message, Spin } from 'antd';
 import { CalendarOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { getSchedules, createSchedule } from '../api/apiClient';
 
 const { Title, Paragraph, Text } = Typography;
 
 const Schedule = () => {
+  const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [events, setEvents] = useState({});
   const [title, setTitle] = useState('');
   const [time, setTime] = useState('');
 
+  const { data: scheduleItems = [], isLoading } = useQuery({
+    queryKey: ['schedules'],
+    queryFn: getSchedules,
+    refetchInterval: 10000,
+  });
+
+  const { mutate, isLoading: isCreating } = useMutation({
+    mutationFn: createSchedule,
+    onSuccess: () => {
+      message.success('일정이 등록되었습니다.');
+      queryClient.invalidateQueries(['schedules']);
+      setTitle('');
+      setTime('');
+    },
+    onError: (error) => {
+      message.error(error.message || '일정 등록에 실패했습니다.');
+    },
+  });
+
+  useEffect(() => {
+    const nextEvents = scheduleItems.reduce((acc, item) => {
+      const dateKey = dayjs(item.start_date).format('YYYY-MM-DD');
+      const entry = {
+        title: item.title,
+        time: dayjs(item.start_date).format('HH:mm') || '시간 미정',
+      };
+      acc[dateKey] = [...(acc[dateKey] || []), entry];
+      return acc;
+    }, {});
+    setEvents(nextEvents);
+  }, [scheduleItems]);
+
   const dateKey = selectedDate.format('YYYY-MM-DD');
   const todayEvents = events[dateKey] || [];
 
   const handleAddEvent = () => {
-    if (!title.trim()) return;
-    setEvents((prev) => ({
-      ...prev,
-      [dateKey]: [
-        ...(prev[dateKey] || []),
-        { title: title.trim(), time: time.trim() || '시간 미정' },
-      ],
-    }));
-    setTitle('');
-    setTime('');
+    if (!title.trim()) {
+      message.warning('일정 제목을 입력해주세요.');
+      return;
+    }
+
+    const startDate = `${dateKey} ${time.trim() || '00:00:00'}`;
+    const endDate = `${dateKey} 23:59:59`;
+
+    mutate({
+      title: title.trim(),
+      description: time.trim() ? `시간: ${time.trim()}` : '가족 일정',
+      start_date: startDate,
+      end_date: endDate,
+    });
   };
 
   const dateCellRender = (value) => {
@@ -52,12 +91,18 @@ const Schedule = () => {
 
         <Col xs={24} lg={16}>
           <Card style={{ borderRadius: 16 }} bodyStyle={{ padding: 16 }}>
-            <Calendar
-              fullscreen={false}
-              value={selectedDate}
-              onSelect={(date) => setSelectedDate(dayjs(date))}
-              dateCellRender={dateCellRender}
-            />
+            {isLoading ? (
+              <div style={{ padding: 40, textAlign: 'center' }}>
+                <Spin />
+              </div>
+            ) : (
+              <Calendar
+                fullscreen={false}
+                value={selectedDate}
+                onSelect={(date) => setSelectedDate(dayjs(date))}
+                dateCellRender={dateCellRender}
+              />
+            )}
           </Card>
         </Col>
 
@@ -92,7 +137,7 @@ const Schedule = () => {
                 onChange={(event) => setTime(event.target.value)}
                 placeholder="시간 (예: 18:00)"
               />
-              <Button type="primary" icon={<PlusOutlined />} onClick={handleAddEvent} block>
+              <Button type="primary" icon={<PlusOutlined />} onClick={handleAddEvent} loading={isCreating} block>
                 일정 추가
               </Button>
             </Space>

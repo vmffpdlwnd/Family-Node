@@ -1,19 +1,42 @@
 import React, { useState } from 'react';
-import { Card, Typography, Input, Select, Button, Space } from 'antd';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, Typography, Input, Select, Button, Space, message } from 'antd';
 import { useNavigate } from 'react-router-dom';
+import { createPost } from '../api/apiClient';
 
 const { Title, Paragraph } = Typography;
 const { Option } = Select;
 
 const BoardWrite = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('일반');
   const [content, setContent] = useState('');
 
+  const { mutate, isLoading } = useMutation({
+    mutationFn: createPost,
+    onSuccess: () => {
+      message.success('게시글이 등록되었습니다.');
+      queryClient.invalidateQueries(['posts']);
+      navigate('/board');
+    },
+    onError: (error) => {
+      message.error(error.message || '게시글 등록에 실패했습니다.');
+    },
+  });
+
   const handleSubmit = () => {
-    console.log('게시글 저장:', { title, category, content });
-    navigate('/board');
+    if (!title.trim() || !content.trim()) {
+      message.warning('제목과 내용을 모두 입력해주세요.');
+      return;
+    }
+
+    mutate({
+      title: title.trim(),
+      content: content.trim(),
+      category,
+    });
   };
 
   return (
@@ -43,7 +66,7 @@ const BoardWrite = () => {
           />
 
           <Space>
-            <Button type="primary" onClick={handleSubmit}>
+            <Button type="primary" onClick={handleSubmit} loading={isLoading}>
               저장
             </Button>
             <Button onClick={() => navigate('/board')}>
