@@ -84,7 +84,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     if (!rows.length) {
       return res.status(404).json({ error: '일정을 찾을 수 없습니다.' });
     }
-    if (rows[0].user_id !== req.user.id) {
+    if (rows[0].user_id !== req.user.id && req.user.role !== 'admin') {
       return res.status(403).json({ error: '일정 삭제 권한이 없습니다.' });
     }
     await pool.query('DELETE FROM schedules WHERE id = ?', [scheduleId]);
