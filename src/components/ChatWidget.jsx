@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, Typography, Button, Space, Input, List, Alert, Popconfirm } from 'antd';
 import { MessageOutlined, SendOutlined, CloseOutlined, DeleteOutlined, ArrowLeftOutlined, PlusOutlined } from '@ant-design/icons';
 import useAuthStore from '../store/authStore';
-import { getRooms, createRoom, deleteRoom, getChats, createChat } from '../api/apiClient';
+import { getRooms, createRoom, deleteRoom, getChats, createChat, deleteChat } from '../api/apiClient';
 
 const { Text } = Typography;
 
@@ -40,6 +40,13 @@ const ChatWidget = () => {
     },
   });
 
+  const { mutate: removeMessage, isLoading: isDeletingMessage } = useMutation({
+    mutationFn: (chatId) => deleteChat(chatId),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['chats', activeRoom?.id]);
+    },
+  });
+
   const { mutate: addRoom } = useMutation({
     mutationFn: (payload) => createRoom(payload),
     onSuccess: () => {
@@ -61,6 +68,10 @@ const ChatWidget = () => {
     sendMessage({ room_id: activeRoom.id, message: message.trim() });
   };
 
+  const handleDeleteMessage = (chatId) => {
+    removeMessage(chatId);
+  };
+
   return (
     <>
       <Button
@@ -73,7 +84,7 @@ const ChatWidget = () => {
       />
 
       {open && (
-        <Card className="chat-floating-card" bordered={false} bodyStyle={{ padding: 0 }}>
+        <Card className="chat-floating-card" styles={{ body: { padding: 0 } }}>
           <div className="chat-header">
             <Space align="center" size={8}>
               {activeRoom && (
@@ -112,7 +123,7 @@ const ChatWidget = () => {
               </div>
               <List
                 size="small"
-                dataSource={rooms}
+                dataSource={rooms || []}
                 locale={{ emptyText: '채팅방이 없습니다.' }}
                 renderItem={(room) => (
                   <List.Item
@@ -127,6 +138,8 @@ const ChatWidget = () => {
                               okText="삭제"
                               cancelText="취소"
                               onConfirm={(e) => { e.stopPropagation(); removeRoom(room.id); }}
+                              getPopupContainer={(triggerNode) => triggerNode?.ownerDocument.body}
+                              popupStyle={{ zIndex: 10000 }}
                             >
                               <Button danger type="text" size="small" icon={<DeleteOutlined />} onClick={(e) => e.stopPropagation()} />
                             </Popconfirm>,
@@ -142,7 +155,7 @@ const ChatWidget = () => {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', height: '400px', padding: '12px 20px' }}>
               <div className="chat-messages" style={{ flex: 1, overflowY: 'auto', marginBottom: 12 }}>
-                {chatData.length ? chatData.map((msg) => (
+                {(chatData || []).length ? (chatData || []).map((msg) => (
                   <div key={msg.id} className={`chat-message-row ${msg.user_id === user?.id ? 'me' : ''}`}>
                     <div className="chat-message-bubble">{msg.message}</div>
                     <div className="chat-message-meta">
@@ -150,6 +163,25 @@ const ChatWidget = () => {
                       <Text type="secondary" className="chat-message-time">
                         {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </Text>
+                      {msg.user_id === user?.id && (
+                        <Popconfirm
+                          title="메시지를 삭제하시겠습니까?"
+                          onConfirm={() => handleDeleteMessage(msg.id)}
+                          okText="삭제"
+                          cancelText="취소"
+                          getPopupContainer={(triggerNode) => triggerNode?.ownerDocument.body}
+                          popupStyle={{ zIndex: 10000 }}
+                        >
+                          <Button
+                            type="text"
+                            size="small"
+                            danger
+                            icon={<DeleteOutlined />}
+                            loading={isDeletingMessage}
+                            style={{ marginLeft: 8 }}
+                          />
+                        </Popconfirm>
+                      )}
                     </div>
                   </div>
                 )) : (

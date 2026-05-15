@@ -325,16 +325,21 @@
 }
 
 .chat-message-bubble {
-  display: inline-block;
-  max-width: 100%;
+  display: inline-flex;
+  flex-direction: column;
+  width: auto;
+  max-width: 55%;
   padding: 12px 14px;
   border-radius: 18px;
   background: #fff;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .chat-message-row.me .chat-message-bubble {
   background: #daf2ff;
+  max-width: 75%;
 }
 
 .chat-message-meta {

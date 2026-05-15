@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, Typography, List, Button, Space, Input, Divider, message, Spin, Alert, Popconfirm } from 'antd';
+import { Card, Typography, Button, Space, Input, Divider, message, Spin, Alert, Popconfirm } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { getChats, createChat, deleteChat } from '../api/apiClient';
 import useAuthStore from '../store/authStore';
@@ -89,49 +89,63 @@ const Chat = () => {
                 <Spin />
               </div>
             ) : messages.length ? (
-              <List
-                dataSource={messages}
-                renderItem={(msg) => {
-                  const canDelete = user && msg.user_id === user.id;
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {messages.map((msg) => {
+                  const isMine = String(msg.user_id) === String(user?.id);
                   return (
-                    <List.Item
+                    <div
                       key={msg.id}
-                      actions={
-                        canDelete
-                          ? [
-                              <Popconfirm
-                                key="delete"
-                                title="메시지를 삭제하시겠습니까?"
-                                onConfirm={() => removeMessage(msg.id)}
-                                okText="삭제"
-                                cancelText="취소"
-                              >
-                                <Button danger size="small" loading={isDeleting}>
-                                  삭제
-                                </Button>
-                              </Popconfirm>,
-                            ]
-                          : []
-                      }
-                      style={{ padding: '12px 0' }}
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: isMine ? 'flex-end' : 'flex-start',
+                        gap: 6,
+                      }}
                     >
-                      <List.Item.Meta
-                        title={<Text strong>{msg.username || msg.user_id || '가족'}</Text>}
-                        description={
-                          <>
-                            <Text>{msg.message || msg.text}</Text>
-                            <div style={{ marginTop: 6 }}>
-                              <Text type="secondary">
-                                {msg.created_at ? new Date(msg.created_at).toLocaleString() : ''}
-                              </Text>
-                            </div>
-                          </>
-                        }
-                      />
-                    </List.Item>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                        {!isMine && <Text strong>{msg.username || msg.user_id || '가족'}</Text>}
+                        {isMine && <Text type="secondary">나</Text>}
+                      </div>
+                      <div
+                        style={{
+                          maxWidth: isMine ? '75%' : '55%',
+                          width: 'auto',
+                          minWidth: 'fit-content',
+                          display: 'inline-flex',
+                          flexDirection: 'column',
+                          background: isMine ? '#daf2ff' : '#ffffff',
+                          border: '1px solid #f0f0f0',
+                          borderRadius: 18,
+                          padding: '12px 14px',
+                          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+                        }}
+                      >
+                        <Text style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{msg.message || msg.text}</Text>
+                        <div style={{ marginTop: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                          <Text type="secondary" style={{ fontSize: 12 }}>
+                            {msg.created_at ? new Date(msg.created_at).toLocaleString() : ''}
+                          </Text>
+                          {isMine && (
+                            <Popconfirm
+                              key="delete"
+                              title="메시지를 삭제하시겠습니까?"
+                              onConfirm={() => removeMessage(msg.id)}
+                              okText="삭제"
+                              cancelText="취소"
+                              getPopupContainer={(triggerNode) => triggerNode?.ownerDocument.body}
+                              popupStyle={{ zIndex: 10000 }}
+                            >
+                              <Button danger size="small" loading={isDeleting}>
+                                삭제
+                              </Button>
+                            </Popconfirm>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   );
-                }}
-              />
+                })}
+              </div>
             ) : (
               <Text type="secondary">아직 메시지가 없습니다. 아래에서 전송해 보세요.</Text>
             )}
