@@ -61,7 +61,7 @@ const Chat = () => {
             <Title level={3}>💬 가족 채팅방</Title>
             <Paragraph>게스트는 채팅 DB를 불러오지 않습니다. 로그인한 멤버만 채팅을 볼 수 있습니다.</Paragraph>
             <Alert
-              message="채팅 이용 안내"
+              title="채팅 이용 안내"
               description="멤버 계정으로 로그인하면 채팅 목록에 접속하고 메시지를 전송할 수 있습니다."
               type="info"
               showIcon

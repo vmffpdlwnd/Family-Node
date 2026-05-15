@@ -83,7 +83,7 @@ const Board = () => {
           </Col>
         </Row>
 
-        <Card style={{ borderRadius: 16, marginBottom: 24 }} bodyStyle={{ padding: 20 }}>
+        <Card style={{ borderRadius: 16, marginBottom: 24 }} styles={{ body: { padding: 20 } }}>
           <Paragraph>
             현재 게스트 상태이므로 게시글을 불러오지 않습니다. 로그인한 가족 구성원만 게시글을 확인하고 작성할 수 있습니다.
           </Paragraph>
@@ -92,9 +92,9 @@ const Board = () => {
           </Button>
         </Card>
 
-        <Card style={{ borderRadius: 16 }} bodyStyle={{ padding: 20 }}>
+        <Card style={{ borderRadius: 16 }} styles={{ body: { padding: 20 } }}>
           <Alert
-            message="게시판 이용 안내"
+            title="게시판 이용 안내"
             description="멤버는 게시물을 확인하고 작성할 수 있으며, 본인이 쓴 글은 삭제할 수 있습니다. 관리자는 본인이 작성하지 않은 글도 삭제할 수 있습니다."
             type="info"
             showIcon
@@ -117,7 +117,7 @@ const Board = () => {
         </Col>
       </Row>
 
-      <Card style={{ borderRadius: 16, marginBottom: 24 }} bodyStyle={{ padding: 20 }}>
+      <Card style={{ borderRadius: 16, marginBottom: 24 }} styles={{ body: { padding: 20 } }}>
         <Row gutter={[16, 16]}>
           <Col xs={24} md={16}>
             <Input placeholder="게시판 검색" prefix={<SearchOutlined />} allowClear disabled />
@@ -130,7 +130,7 @@ const Board = () => {
         </Row>
       </Card>
 
-      <Card style={{ borderRadius: 16 }} bodyStyle={{ padding: 0 }}>
+      <Card style={{ borderRadius: 16 }} styles={{ body: { padding: 0 } }}>
         {isLoading ? (
           <div style={{ padding: 40, textAlign: 'center' }}>
             <Spin />

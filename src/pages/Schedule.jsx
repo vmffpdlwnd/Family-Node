@@ -116,9 +116,9 @@ const Schedule = () => {
           </Col>
 
           <Col xs={24}>
-            <Card style={{ borderRadius: 16 }} bodyStyle={{ padding: 20 }}>
+            <Card style={{ borderRadius: 16 }} styles={{ body: { padding: 20 } }}>
               <Alert
-                message="일정 보기 안내"
+                title="일정 보기 안내"
                 description="멤버 계정으로 로그인하면 가족 일정 목록을 확인하고, 일정을 등록 및 삭제할 수 있습니다."
                 type="info"
                 showIcon
@@ -127,13 +127,13 @@ const Schedule = () => {
           </Col>
 
           <Col xs={24} lg={16}>
-            <Card style={{ borderRadius: 16 }} bodyStyle={{ padding: 16 }}>
+            <Card style={{ borderRadius: 16 }} styles={{ body: { padding: 16 } }}>
               <Calendar fullscreen={false} value={selectedDate} onSelect={(date) => setSelectedDate(dayjs(date))} />
             </Card>
           </Col>
 
           <Col xs={24} lg={8}>
-            <Card style={{ borderRadius: 16 }} bodyStyle={{ padding: 20 }}>
+            <Card style={{ borderRadius: 16 }} styles={{ body: { padding: 20 } }}>
               <Title level={5}>{selectedDate.format('YYYY년 M월 D일')}</Title>
               <Paragraph>게스트는 일정을 등록하거나 삭제할 수 없습니다.</Paragraph>
             </Card>
@@ -154,7 +154,7 @@ const Schedule = () => {
         </Col>
 
         <Col xs={24} lg={16}>
-          <Card style={{ borderRadius: 16 }} bodyStyle={{ padding: 16 }}>
+          <Card style={{ borderRadius: 16 }} styles={{ body: { padding: 16 } }}>
             {isLoading ? (
               <div style={{ padding: 40, textAlign: 'center' }}>
                 <Spin />
@@ -171,7 +171,7 @@ const Schedule = () => {
         </Col>
 
         <Col xs={24} lg={8}>
-          <Card style={{ borderRadius: 16 }} bodyStyle={{ padding: 20 }}>
+          <Card style={{ borderRadius: 16 }} styles={{ body: { padding: 20 } }}>
             <Title level={5}>{selectedDate.format('YYYY년 M월 D일')}</Title>
             <Paragraph>선택된 날짜 일정</Paragraph>
 

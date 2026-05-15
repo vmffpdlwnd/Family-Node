@@ -47,7 +47,7 @@ const Home = () => {
     <div style={{ padding: '20px' }}>
       <Row gutter={[24, 24]}>
         <Col xs={24} lg={12}>
-          <Card style={{ borderRadius: 16, minHeight: 280 }} bodyStyle={{ padding: 28 }}>
+          <Card style={{ borderRadius: 16, minHeight: 280 }} styles={{ body: { padding: 28 } }}>
             <Title level={3} style={{ marginBottom: 8 }}>
               가족 허브에 오신 것을 환영합니다
             </Title>
@@ -70,7 +70,7 @@ const Home = () => {
 
       <Row gutter={[24, 24]} style={{ marginTop: 24 }}>
         <Col xs={24} md={8}>
-          <Card style={{ borderRadius: 16, minHeight: 300 }} bodyStyle={{ padding: 24 }}>
+          <Card style={{ borderRadius: 16, minHeight: 300 }} styles={{ body: { padding: 24 } }}>
             <Title level={4}>최신 게시글</Title>
             <Paragraph type="secondary" style={{ marginBottom: 18 }}>
               클라우드 백엔드에서 로드된 최신 게시글입니다.
@@ -94,7 +94,7 @@ const Home = () => {
         </Col>
 
         <Col xs={24} md={8}>
-          <Card style={{ borderRadius: 16, minHeight: 300 }} bodyStyle={{ padding: 24 }}>
+          <Card style={{ borderRadius: 16, minHeight: 300 }} styles={{ body: { padding: 24 } }}>
             <Title level={4}>예정된 일정</Title>
             {loading ? (
               <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
@@ -117,7 +117,7 @@ const Home = () => {
         </Col>
 
         <Col xs={24} md={8}>
-          <Card style={{ borderRadius: 16, minHeight: 300 }} bodyStyle={{ padding: 24 }}>
+          <Card style={{ borderRadius: 16, minHeight: 300 }} styles={{ body: { padding: 24 } }}>
             <Title level={4}>최근 채팅</Title>
             {loading ? (
               <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>

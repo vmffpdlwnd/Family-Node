@@ -7,10 +7,9 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: process.env.VITE_API_PROXY || 'http://localhost:3000',
+        target: 'https://family-node.duckdns.org',
         changeOrigin: true,
-        secure: false,
-      },
-    },
-  },
+      }
+    }
+  }
 })
