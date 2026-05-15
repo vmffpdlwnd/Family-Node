@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, Row, Col, Calendar, Typography, Input, Button, Space, message, Spin, Alert, Popconfirm, Modal, Badge } from 'antd';
+import { Card, Row, Col, Calendar, Typography, Input, Button, Space, message, Spin, Alert, Popconfirm, Modal, Select } from 'antd';
 import { CalendarOutlined, PlusOutlined, EditOutlined, DeleteOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ko';
@@ -11,8 +11,6 @@ import useAuthStore from '../store/authStore';
 dayjs.locale('ko');
 
 const { Title, Paragraph, Text } = Typography;
-
-const HOLIDAY_API_KEY = import.meta.env.VITE_HOLIDAY_API_KEY;
 
 const fetchHolidays = async (year, month) => {
   try {
@@ -150,67 +148,24 @@ const Schedule = () => {
     });
   };
 
-  const cellRender = (value) => {
-    const dayOfWeek = value.day();
-    const dateStr = value.format('YYYY-MM-DD');
-    const isSunday = dayOfWeek === 0;
-    const holiday = holidays[dateStr];
-    const isRed = isSunday || !!holiday;
-    const listData = events[dateStr] || [];
-
-    return (
-      <div>
-        {holiday && (
-          <div style={{ fontSize: 9, color: '#ff4d4f', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {holiday}
-          </div>
-        )}
-        {listData.slice(0, 2).map((item) => (
-          <div key={item.id} style={{ fontSize: 10, padding: '1px 4px', borderRadius: 4, background: '#e6f4ff', color: '#1677ff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 }}>
-            {item.time} {item.title}
-          </div>
-        ))}
-        {listData.length > 2 && <Text type="secondary" style={{ fontSize: 10 }}>+{listData.length - 2}개</Text>}
-      </div>
-    );
-  };
-
-  const dateFullCellRender = (value) => {
+  const dateFullCellRender = (displayMonth) => (value) => {
     const dayOfWeek = value.day();
     const dateStr = value.format('YYYY-MM-DD');
     const isSunday = dayOfWeek === 0;
     const isSaturday = dayOfWeek === 6;
     const holiday = holidays[dateStr];
     const isRed = isSunday || !!holiday;
-    // const isOtherMonth = value.month() !== currentMonth.month();
+    const isOtherMonth = value.month() !== displayMonth.month() || value.year() !== displayMonth.year();
     const isSelected = value.format('YYYY-MM-DD') === selectedDate.format('YYYY-MM-DD');
     const isToday = value.format('YYYY-MM-DD') === dayjs().format('YYYY-MM-DD');
     const listData = events[dateStr] || [];
 
     return (
-      <div
-        style={{
-          minHeight: 80,
-          padding: '4px 6px',
-          borderRadius: 8,
-          background: isSelected ? '#e6f4ff' : 'transparent',
-          border: isToday ? '1px solid #1677ff' : '1px solid transparent',
-          cursor: 'pointer',
-          // opacity: isOtherMonth ? 0.35 : 1,
-        }}
-      >
-        <div style={{
-          fontWeight: isToday ? 700 : 400,
-          color: isRed ? '#ff4d4f' : isSaturday ? '#1677ff' : undefined,
-          marginBottom: 2,
-        }}>
+      <div style={{ minHeight: 80, padding: '4px 6px', borderRadius: 8, background: isSelected ? '#e6f4ff' : 'transparent', border: isToday ? '1px solid #1677ff' : '1px solid transparent', cursor: 'pointer', opacity: isOtherMonth ? 0.35 : 1 }}>
+        <div style={{ fontWeight: isToday ? 700 : 400, color: isRed ? '#ff4d4f' : isSaturday ? '#1677ff' : undefined, marginBottom: 2 }}>
           {value.date()}
         </div>
-        {holiday && (
-          <div style={{ fontSize: 9, color: '#ff4d4f', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {holiday}
-          </div>
-        )}
+        {holiday && <div style={{ fontSize: 9, color: '#ff4d4f', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{holiday}</div>}
         {listData.slice(0, 2).map((item) => (
           <div key={item.id} style={{ fontSize: 10, padding: '1px 4px', borderRadius: 4, background: '#e6f4ff', color: '#1677ff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 }}>
             {item.time} {item.title}
@@ -224,11 +179,28 @@ const Schedule = () => {
   const headerRender = ({ value, onChange }) => {
     const year = value.year();
     const month = value.month();
+    const years = Array.from({ length: 10 }, (_, i) => dayjs().year() - 5 + i);
+    const months = Array.from({ length: 12 }, (_, i) => i);
+
     return (
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 16px' }}>
-        <Button onClick={() => { const newVal = value.subtract(1, 'month'); onChange(newVal); setCurrentMonth(newVal); }}>{'<'}</Button>
-        <Text strong style={{ fontSize: 16 }}>{year}년 {month + 1}월</Text>
-        <Button onClick={() => { const newVal = value.add(1, 'month'); onChange(newVal); setCurrentMonth(newVal); }}>{'>'}</Button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 16px', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Button onClick={() => { const newVal = value.subtract(1, 'month'); onChange(newVal); setCurrentMonth(newVal); }}>{'<'}</Button>
+          <Select
+            value={year}
+            onChange={(val) => { const newVal = value.year(val); onChange(newVal); setCurrentMonth(newVal); }}
+            options={years.map((y) => ({ value: y, label: `${y}년` }))}
+            style={{ width: 90 }}
+          />
+          <Select
+            value={month}
+            onChange={(val) => { const newVal = value.month(val); onChange(newVal); setCurrentMonth(newVal); }}
+            options={months.map((m) => ({ value: m, label: `${m + 1}월` }))}
+            style={{ width: 70 }}
+          />
+          <Button onClick={() => { const newVal = value.add(1, 'month'); onChange(newVal); setCurrentMonth(newVal); }}>{'>'}</Button>
+        </div>
+        <Button onClick={() => { const today = dayjs(); onChange(today); setCurrentMonth(today); setSelectedDate(today); }}>오늘</Button>
       </div>
     );
   };
@@ -239,7 +211,7 @@ const Schedule = () => {
         <Title level={3}><CalendarOutlined /> 가족 일정</Title>
         <Alert description="멤버 계정으로 로그인하면 가족 일정을 확인하고 등록할 수 있습니다." type="info" showIcon style={{ marginBottom: 16 }} />
         <Card style={{ borderRadius: 16 }}>
-          <Calendar fullscreen={false} locale={locale} value={selectedDate} onSelect={(date) => setSelectedDate(dayjs(date))} headerRender={headerRender} />
+          <Calendar fullscreen={false} locale={locale} value={selectedDate} onSelect={(date) => { const d = dayjs(date); setSelectedDate(d); setCurrentMonth(d); }} headerRender={headerRender} />
         </Card>
       </div>
     );
@@ -252,7 +224,10 @@ const Schedule = () => {
           <Card style={{ borderRadius: 16 }} styles={{ body: { padding: 16 } }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <Title level={3} style={{ margin: 0 }}><CalendarOutlined /> 가족 일정</Title>
-              <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowAddModal(true)}>일정 추가</Button>
+              <Space>
+                <Button onClick={() => { const today = dayjs(); setSelectedDate(today); setCurrentMonth(today); }}>오늘</Button>
+                <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowAddModal(true)}>일정 추가</Button>
+              </Space>
             </div>
             {isLoading ? (
               <div style={{ padding: 40, textAlign: 'center' }}><Spin /></div>
@@ -261,8 +236,8 @@ const Schedule = () => {
                 fullscreen={false}
                 locale={locale}
                 value={selectedDate}
-                onSelect={(date) => setSelectedDate(dayjs(date))}
-                fullCellRender={dateFullCellRender}
+                onSelect={(date) => { const d = dayjs(date); setSelectedDate(d); setCurrentMonth(d); }}
+                fullCellRender={dateFullCellRender(currentMonth)}
                 headerRender={headerRender}
               />
             )}
