@@ -7,7 +7,7 @@ const router = express.Router();
 router.get('/', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      'SELECT p.*, u.username FROM posts p JOIN users u ON p.user_id = u.id ORDER BY p.created_at DESC',
+      'SELECT p.*, u.username, u.nickname FROM posts p JOIN users u ON p.user_id = u.id ORDER BY p.created_at DESC',
     );
     return res.json(rows);
   } catch (error) {
@@ -19,7 +19,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const [rows] = await pool.query(
-      'SELECT p.*, u.username FROM posts p JOIN users u ON p.user_id = u.id WHERE p.id = ?',
+      'SELECT p.*, u.username, u.nickname FROM posts p JOIN users u ON p.user_id = u.id WHERE p.id = ?',
       [req.params.id],
     );
     if (!rows.length) {

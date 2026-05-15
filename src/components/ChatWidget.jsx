@@ -167,7 +167,7 @@ const ChatWidget = ({ pageMode = false }) => {
                   <div key={msg.id} className={`chat-message-row ${msg.user_id === user?.id ? 'me' : ''}`}>
                     <div className="chat-message-bubble">{msg.message}</div>
                     <div className="chat-message-meta">
-                      <Text type="secondary">{msg.username}</Text>
+                      <Text type="secondary">{msg.nickname || msg.username || '익명'}</Text>
                       <Text type="secondary" className="chat-message-time">
                         {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </Text>

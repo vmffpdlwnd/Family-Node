@@ -8,7 +8,7 @@ router.get('/', async (req, res) => {
   const roomId = req.query.room_id || 'family';
   try {
     const [rows] = await pool.query(
-      'SELECT c.*, u.username FROM chats c JOIN users u ON c.user_id = u.id WHERE c.room_id = ? ORDER BY c.created_at ASC LIMIT 200',
+      'SELECT c.*, u.username, u.nickname FROM chats c JOIN users u ON c.user_id = u.id WHERE c.room_id = ? ORDER BY c.created_at ASC LIMIT 200',
       [roomId],
     );
     return res.json(rows);
@@ -29,7 +29,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
   try {
     const [result] = await pool.query('INSERT INTO chats (user_id, room_id, message) VALUES (?, ?, ?)', [req.user.id, room_id, message]);
-    const [rows] = await pool.query('SELECT c.*, u.username FROM chats c JOIN users u ON c.user_id = u.id WHERE c.id = ?', [result.insertId]);
+    const [rows] = await pool.query('SELECT c.*, u.username, u.nickname FROM chats c JOIN users u ON c.user_id = u.id WHERE c.id = ?', [result.insertId]);
     return res.status(201).json(rows[0]);
   } catch (error) {
     console.error(error);

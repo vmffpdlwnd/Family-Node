@@ -73,7 +73,7 @@ const BoardDetail = () => {
           {data.title}
         </Title>
         <Paragraph>
-          <Text strong>작성자:</Text> {data.username || '익명'}
+          <Text strong>작성자:</Text> {data.nickname || data.username || '익명'}
           <br />
           <Text strong>카테고리:</Text> {data.category || '일반'}
           <br />

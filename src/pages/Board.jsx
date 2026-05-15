@@ -79,7 +79,7 @@ const Board = () => {
   const dataSource = (data || []).map((item) => ({
     key: item.id,
     title: item.title,
-    author: item.username || item.author || '익명',
+    author: item.nickname || item.username || item.author || '익명',
     category: item.category || '일반',
     date: item.created_at ? new Date(item.created_at).toLocaleString() : '-',
     views: item.views ?? 0,

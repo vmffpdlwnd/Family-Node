@@ -27,7 +27,7 @@ export const authenticateToken = (req, res, next) => {
 };
 
 router.post('/register', async (req, res) => {
-  const { username, password, role = 'guest' } = req.body;
+  const { username, password, nickname, role = 'guest' } = req.body;
   if (!username || !password) {
     return res.status(400).json({ error: 'username과 password가 필요합니다.' });
   }
@@ -40,11 +40,11 @@ router.post('/register', async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const [result] = await pool.query(
-      'INSERT INTO users (username, password, role) VALUES (?, ?, ?)',
-      [username, hashedPassword, role],
+      'INSERT INTO users (username, password, nickname, role) VALUES (?, ?, ?, ?)',
+      [username, hashedPassword, nickname || null, role],
     );
 
-    return res.status(201).json({ id: result.insertId, username, role });
+    return res.status(201).json({ id: result.insertId, username, nickname: nickname || null, role });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: '회원가입 중 오류가 발생했습니다.' });
@@ -73,7 +73,7 @@ router.post('/login', async (req, res) => {
       expiresIn: '7d',
     });
 
-    return res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
+    return res.json({ token, user: { id: user.id, username: user.username, nickname: user.nickname || null, role: user.role } });
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: '로그인 중 오류가 발생했습니다.' });
@@ -82,7 +82,7 @@ router.post('/login', async (req, res) => {
 
 router.get('/me', authenticateToken, async (req, res) => {
   try {
-    const [users] = await pool.query('SELECT id, username, role, created_at, last_login FROM users WHERE id = ?', [req.user.id]);
+    const [users] = await pool.query('SELECT id, username, nickname, role, created_at, last_login FROM users WHERE id = ?', [req.user.id]);
     if (!users.length) {
       return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
     }
@@ -99,7 +99,7 @@ router.get('/users', authenticateToken, async (req, res) => {
   }
 
   try {
-    const [users] = await pool.query('SELECT id, username, role, created_at, last_login FROM users ORDER BY created_at ASC');
+    const [users] = await pool.query('SELECT id, username, nickname, role, created_at, last_login FROM users ORDER BY created_at ASC');
     return res.json(users);
   } catch (error) {
     console.error(error);
@@ -127,11 +127,27 @@ router.put('/users/:id/role', authenticateToken, async (req, res) => {
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
     }
-    const [users] = await pool.query('SELECT id, username, role, created_at FROM users WHERE id = ?', [req.params.id]);
+    const [users] = await pool.query('SELECT id, username, nickname, role, created_at FROM users WHERE id = ?', [req.params.id]);
     return res.json(users[0]);
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: '사용자 역할 변경 중 오류가 발생했습니다.' });
+  }
+});
+
+router.put('/me', authenticateToken, async (req, res) => {
+  const { nickname } = req.body;
+
+  try {
+    await pool.query('UPDATE users SET nickname = ? WHERE id = ?', [nickname || null, req.user.id]);
+    const [users] = await pool.query('SELECT id, username, nickname, role, created_at, last_login FROM users WHERE id = ?', [req.user.id]);
+    if (!users.length) {
+      return res.status(404).json({ error: '사용자를 찾을 수 없습니다.' });
+    }
+    return res.json(users[0]);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: '프로필 업데이트 중 오류가 발생했습니다.' });
   }
 });
 

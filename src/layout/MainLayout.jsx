@@ -115,7 +115,7 @@ const MainLayout = ({ children }) => {
   </div>
   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
     {user ? (
-      <Typography.Text strong>{user.username}님</Typography.Text>
+      <Typography.Text strong>{user.nickname || user.username}님</Typography.Text>
     ) : (
       <Typography.Text type="secondary">로그인이 필요합니다.</Typography.Text>
     )}

@@ -63,3 +63,4 @@ export const deleteChat = (chatId) => request(`/chats/${chatId}`, { method: 'DEL
 
 export const getUsers = () => request('/auth/users');
 export const updateUserRole = (userId, role) => request(`/auth/users/${encodeURIComponent(userId)}/role`, { method: 'PUT', body: { role } });
+export const updateProfile = (payload) => request('/auth/me', { method: 'PUT', body: payload });

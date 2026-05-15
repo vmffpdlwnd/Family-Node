@@ -81,7 +81,7 @@ const Admin = () => {
         <Col xs={24}>
           <Card style={{ borderRadius: 16, padding: 28 }}>
             <Title level={3}>관리자 대시보드</Title>
-            <Text type="secondary">현재 계정: {user.username} ({user.role})</Text>
+            <Text type="secondary">현재 계정: {user.nickname || user.username} ({user.role})</Text>
           </Card>
         </Col>
 
@@ -165,14 +165,17 @@ const Admin = () => {
                       ]}
                     >
                       <List.Item.Meta
-                        title={account.username}
+                        title={account.nickname || account.username}
                         description={
-                          <Space size="small">
-                            <Tag color={account.role === 'admin' ? 'red' : account.role === 'member' ? 'green' : 'default'}>
-                              {account.role}
-                            </Tag>
-                            <Text type="secondary">{new Date(account.created_at).toLocaleDateString()}</Text>
-                            {isSelf && <Text type="secondary">(본인 계정)</Text>}
+                          <Space direction="vertical" size="small">
+                            <Space size="small">
+                              <Tag color={account.role === 'admin' ? 'red' : account.role === 'member' ? 'green' : 'default'}>
+                                {account.role}
+                              </Tag>
+                              <Text type="secondary">{new Date(account.created_at).toLocaleDateString()}</Text>
+                              {isSelf && <Text type="secondary">(본인 계정)</Text>}
+                            </Space>
+                            <Text type="secondary">닉네임: {account.nickname || '-'}</Text>
                           </Space>
                         }
                       />

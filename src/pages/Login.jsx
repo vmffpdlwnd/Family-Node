@@ -26,10 +26,10 @@ const Login = () => {
     }
   };
 
-  const onRegister = async ({ username, password }) => {
+  const onRegister = async ({ username, password, nickname }) => {
     setLoading(true);
     try {
-      await registerRequest({ username, password });
+      await registerRequest({ username, password, nickname });
       message.success('회원가입이 완료되었습니다. 로그인해주세요.');
       setActiveTab('login');
     } catch (error) {
@@ -50,7 +50,7 @@ const Login = () => {
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 'calc(100vh - 160px)' }}>
         <Card style={{ width: 420, borderRadius: 16 }}>
           <Title level={4}>이미 로그인되어 있습니다.</Title>
-          <Paragraph>{user.username}님, 반갑습니다.</Paragraph>
+          <Paragraph>{user.nickname || user.username}님, 반갑습니다.</Paragraph>
           <Button type="primary" onClick={() => navigate('/')} style={{ marginRight: 12 }}>
             홈으로
           </Button>
@@ -101,6 +101,13 @@ const Login = () => {
             rules={[{ required: true, message: '아이디를 입력해주세요.' }]}
           >
             <Input placeholder="아이디" />
+          </Form.Item>
+
+          <Form.Item
+            name="nickname"
+            label="닉네임"
+          >
+            <Input placeholder="닉네임 (선택)" />
           </Form.Item>
 
           <Form.Item
