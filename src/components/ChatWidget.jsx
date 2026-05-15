@@ -7,10 +7,10 @@ import { getRooms, createRoom, deleteRoom, getChats, createChat, deleteChat } fr
 
 const { Text } = Typography;
 
-const ChatWidget = () => {
+const ChatWidget = ({ pageMode = false }) => {
   const { user } = useAuthStore();
   const isGuest = !user || user.role === 'guest';
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(pageMode);
   const [activeRoom, setActiveRoom] = useState(null);
   const [message, setMessage] = useState('');
   const [newRoomTitle, setNewRoomTitle] = useState('');
@@ -74,17 +74,23 @@ const ChatWidget = () => {
 
   return (
     <>
-      <Button
-        className="chat-launcher"
-        type="primary"
-        shape="circle"
-        icon={<MessageOutlined style={{ fontSize: 24 }} />}
-        style={{ width: 56, height: 56, padding: 0 }}
-        onClick={() => setOpen((prev) => !prev)}
-      />
+      {!pageMode && (
+        <Button
+          className="chat-launcher"
+          type="primary"
+          shape="circle"
+          icon={<MessageOutlined style={{ fontSize: 24 }} />}
+          style={{ width: 56, height: 56, padding: 0 }}
+          onClick={() => setOpen((prev) => !prev)}
+        />
+      )}
 
-      {open && (
-        <Card className="chat-floating-card" styles={{ body: { padding: 0 } }}>
+      {(pageMode || open) && (
+        <Card
+          className={pageMode ? 'chat-page-card' : 'chat-floating-card'}
+          style={pageMode ? { width: '100%', minHeight: 'calc(100vh - 64px)', margin: '0 auto' } : undefined}
+          bodyStyle={{ padding: 0 }}
+        >
           <div className="chat-header">
             <Space align="center" size={8}>
               {activeRoom && (
@@ -93,7 +99,9 @@ const ChatWidget = () => {
               <MessageOutlined />
               <span>{activeRoom ? activeRoom.name : '가족 채팅'}</span>
             </Space>
-            <Button type="text" icon={<CloseOutlined />} onClick={() => setOpen(false)} />
+            {!pageMode && (
+              <Button type="text" icon={<CloseOutlined />} onClick={() => setOpen(false)} />
+            )}
           </div>
 
           {isGuest ? (
