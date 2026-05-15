@@ -165,7 +165,7 @@ const Admin = () => {
                       ]}
                     >
                       <List.Item.Meta
-                        title={account.nickname || account.username}
+                        title={account.nickname}
                         description={
                           <Space direction="vertical" size="small">
                             <Space size="small">
@@ -175,7 +175,7 @@ const Admin = () => {
                               <Text type="secondary">{new Date(account.created_at).toLocaleDateString()}</Text>
                               {isSelf && <Text type="secondary">(본인 계정)</Text>}
                             </Space>
-                            <Text type="secondary">닉네임: {account.nickname || '-'}</Text>
+                            <Text type="secondary">유저: {account.username || '-'}</Text>
                           </Space>
                         }
                       />
