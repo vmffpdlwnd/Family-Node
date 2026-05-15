@@ -1,6 +1,6 @@
 ﻿import React, { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, Row, Col, Button, Input, Table, Typography, Spin, Popconfirm, Alert, message } from 'antd';
+import { Card, Row, Col, Button, Input, Table, Typography, Spin, Popconfirm, Alert, Tooltip, message } from 'antd';
 import { SearchOutlined, PlusOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { getPosts, deletePost } from '../api/apiClient';
@@ -34,7 +34,19 @@ const Board = () => {
 
   const columns = useMemo(
     () => [
-      { title: '제목', dataIndex: 'title', key: 'title' },
+      {
+        title: '제목',
+        dataIndex: 'title',
+        key: 'title',
+        render: (text, record) => (
+          <a onClick={(event) => {
+            event.stopPropagation();
+            navigate(`/board/${record.key}`);
+          }} style={{ cursor: 'pointer' }}>
+            {text}
+          </a>
+        ),
+      },
       { title: '작성자', dataIndex: 'author', key: 'author', width: 140 },
       { title: '카테고리', dataIndex: 'category', key: 'category', width: 120 },
       { title: '작성일', dataIndex: 'date', key: 'date', width: 160 },
@@ -64,7 +76,7 @@ const Board = () => {
     [user, removePost, isDeleting],
   );
 
-  const dataSource = data.map((item) => ({
+  const dataSource = (data || []).map((item) => ({
     key: item.id,
     title: item.title,
     author: item.username || item.author || '익명',
@@ -95,7 +107,7 @@ const Board = () => {
         <Card style={{ borderRadius: 16 }} styles={{ body: { padding: 20 } }}>
           <Alert
             title="게시판 이용 안내"
-            description="멤버는 게시물을 확인하고 작성할 수 있으며, 본인이 쓴 글은 삭제할 수 있습니다. 관리자는 본인이 작성하지 않은 글도 삭제할 수 있습니다."
+            description="멤버는 게시물을 확인하고 작성할 수 있으며, 본인 작성 글만 삭제할 수 있습니다."
             type="info"
             showIcon
           />
@@ -143,7 +155,7 @@ const Board = () => {
           <Table
             columns={columns}
             dataSource={dataSource}
-            pagination={{ pageSize: 10 }}
+            pagination={{ pageSize: 7 }}
             rowKey="key"
             locale={{ emptyText: '등록된 게시글이 없습니다.' }}
           />

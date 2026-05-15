@@ -1,23 +1,48 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, Row, Col, Calendar, Typography, Input, Button, List, Space, message, Spin, Alert, Popconfirm } from 'antd';
-import { CalendarOutlined, PlusOutlined } from '@ant-design/icons';
+import { Card, Row, Col, Calendar, Typography, Input, Button, Space, message, Spin, Alert, Popconfirm, Modal, Badge } from 'antd';
+import { CalendarOutlined, PlusOutlined, EditOutlined, DeleteOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { getSchedules, createSchedule, deleteSchedule } from '../api/apiClient';
+import 'dayjs/locale/ko';
+import locale from 'antd/es/date-picker/locale/ko_KR';
+import { getSchedules, createSchedule, deleteSchedule, updateSchedule as updateScheduleApi } from '../api/apiClient';
 import useAuthStore from '../store/authStore';
 
+dayjs.locale('ko');
+
 const { Title, Paragraph, Text } = Typography;
+
+const HOLIDAY_API_KEY = import.meta.env.VITE_HOLIDAY_API_KEY;
+
+const fetchHolidays = async (year, month) => {
+  try {
+    const res = await fetch(`/api/holidays?year=${year}&month=${month}`);
+    return await res.json();
+  } catch {
+    return {};
+  }
+};
 
 const Schedule = () => {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const [selectedDate, setSelectedDate] = useState(dayjs());
-  const [events, setEvents] = useState({});
+  const [currentMonth, setCurrentMonth] = useState(dayjs());
   const [title, setTitle] = useState('');
   const [time, setTime] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editItem, setEditItem] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editTime, setEditTime] = useState('');
 
   const isGuest = !user || user.role === 'guest';
   const canAccess = user && (user.role === 'member' || user.role === 'admin');
+
+  const { data: holidays = {} } = useQuery({
+    queryKey: ['holidays', currentMonth.year(), currentMonth.month() + 1],
+    queryFn: () => fetchHolidays(currentMonth.year(), currentMonth.month() + 1),
+    staleTime: 1000 * 60 * 60 * 24,
+  });
 
   const { data: scheduleItems = [], isLoading } = useQuery({
     queryKey: ['schedules'],
@@ -33,6 +58,7 @@ const Schedule = () => {
       queryClient.invalidateQueries(['schedules']);
       setTitle('');
       setTime('');
+      setShowAddModal(false);
     },
     onError: (error) => {
       message.error(error.message || '일정 등록에 실패했습니다.');
@@ -50,95 +76,171 @@ const Schedule = () => {
     },
   });
 
-  useEffect(() => {
-    const nextEvents = scheduleItems.reduce((acc, item) => {
-      const dateKey = dayjs(item.start_date).format('YYYY-MM-DD');
-      const entry = {
-        id: item.id,
-        title: item.title,
-        time: dayjs(item.start_date).format('HH:mm') || '시간 미정',
-        user_id: item.user_id,
+  const { mutate: updateScheduleMutate, isLoading: isUpdating } = useMutation({
+    mutationFn: ({ id, data }) => updateScheduleApi(id, data),
+    onSuccess: () => {
+      message.success('일정이 수정되었습니다.');
+      queryClient.invalidateQueries(['schedules']);
+      setEditItem(null);
+    },
+    onError: (error) => {
+      message.error(error.message || '일정 수정에 실패했습니다.');
+    },
+  });
+
+  const parseLocalScheduleDate = (dateString) => {
+    if (!dateString) return dayjs();
+    let normalized = dateString;
+    if (normalized.endsWith('Z')) normalized = normalized.slice(0, -1);
+    normalized = normalized.replace(/([+-]\d{2}:?\d{2})$/, '');
+    normalized = normalized.replace('T', ' ');
+    return dayjs(normalized);
+  };
+
+  const enrichedScheduleItems = useMemo(() => {
+    if (!scheduleItems || !Array.isArray(scheduleItems)) return [];
+    return scheduleItems.map((item) => {
+      const parsedDate = parseLocalScheduleDate(item.start_date);
+      return {
+        ...item,
+        parsedDate,
+        time: parsedDate.format('HH:mm'),
+        dateKey: parsedDate.format('YYYY-MM-DD'),
       };
-      acc[dateKey] = [...(acc[dateKey] || []), entry];
-      return acc;
-    }, {});
-    setEvents(nextEvents);
+    });
   }, [scheduleItems]);
 
+  const events = useMemo(() => {
+    return enrichedScheduleItems.reduce((acc, item) => {
+      acc[item.dateKey] = [...(acc[item.dateKey] || []), item];
+      return acc;
+    }, {});
+  }, [enrichedScheduleItems]);
+
   const dateKey = selectedDate.format('YYYY-MM-DD');
-  const todayItems = scheduleItems.filter(
-    (item) => dayjs(item.start_date).format('YYYY-MM-DD') === dateKey,
-  );
+  const todayItems = enrichedScheduleItems.filter((item) => item.dateKey === dateKey);
 
   const handleAddEvent = () => {
-    if (!title.trim()) {
-      message.warning('일정 제목을 입력해주세요.');
-      return;
-    }
-
-    const startDate = `${dateKey} ${time.trim() || '00:00:00'}`;
-    const endDate = `${dateKey} 23:59:59`;
-
+    if (!title.trim()) { message.warning('일정 제목을 입력해주세요.'); return; }
     mutate({
       title: title.trim(),
       description: time.trim() ? `시간: ${time.trim()}` : '가족 일정',
-      start_date: startDate,
-      end_date: endDate,
+      start_date: `${dateKey} ${time.trim() || '00:00:00'}`,
+      end_date: `${dateKey} 23:59:59`,
     });
   };
 
-  const handleDelete = (id) => {
-    removeSchedule(id);
+  const handleEditOpen = (item) => {
+    setEditItem(item);
+    setEditTitle(item.title);
+    setEditTime(item.time);
   };
 
-  const dateCellRender = (value) => {
-    const listData = events[value.format('YYYY-MM-DD')] || [];
-    return listData.length ? (
-      <ul className="events-list">
-        {listData.map((item) => (
-          <li key={item.id}>
-            <Text type="secondary">• {item.title}</Text>
-          </li>
+  const handleEditSave = () => {
+    if (!editItem) return;
+    if (!editTitle.trim()) { message.warning('일정 제목을 입력해주세요.'); return; }
+    updateScheduleMutate({
+      id: editItem.id,
+      data: {
+        title: editTitle.trim(),
+        description: editTime.trim() ? `시간: ${editTime.trim()}` : '가족 일정',
+        start_date: `${dateKey} ${editTime.trim() || '00:00:00'}`,
+        end_date: `${dateKey} 23:59:59`,
+      },
+    });
+  };
+
+  const cellRender = (value) => {
+    const dayOfWeek = value.day();
+    const dateStr = value.format('YYYY-MM-DD');
+    const isSunday = dayOfWeek === 0;
+    const holiday = holidays[dateStr];
+    const isRed = isSunday || !!holiday;
+    const listData = events[dateStr] || [];
+
+    return (
+      <div>
+        {holiday && (
+          <div style={{ fontSize: 9, color: '#ff4d4f', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {holiday}
+          </div>
+        )}
+        {listData.slice(0, 2).map((item) => (
+          <div key={item.id} style={{ fontSize: 10, padding: '1px 4px', borderRadius: 4, background: '#e6f4ff', color: '#1677ff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 }}>
+            {item.time} {item.title}
+          </div>
         ))}
-      </ul>
-    ) : null;
+        {listData.length > 2 && <Text type="secondary" style={{ fontSize: 10 }}>+{listData.length - 2}개</Text>}
+      </div>
+    );
+  };
+
+  const dateFullCellRender = (value) => {
+    const dayOfWeek = value.day();
+    const dateStr = value.format('YYYY-MM-DD');
+    const isSunday = dayOfWeek === 0;
+    const isSaturday = dayOfWeek === 6;
+    const holiday = holidays[dateStr];
+    const isRed = isSunday || !!holiday;
+    // const isOtherMonth = value.month() !== currentMonth.month();
+    const isSelected = value.format('YYYY-MM-DD') === selectedDate.format('YYYY-MM-DD');
+    const isToday = value.format('YYYY-MM-DD') === dayjs().format('YYYY-MM-DD');
+    const listData = events[dateStr] || [];
+
+    return (
+      <div
+        style={{
+          minHeight: 80,
+          padding: '4px 6px',
+          borderRadius: 8,
+          background: isSelected ? '#e6f4ff' : 'transparent',
+          border: isToday ? '1px solid #1677ff' : '1px solid transparent',
+          cursor: 'pointer',
+          // opacity: isOtherMonth ? 0.35 : 1,
+        }}
+      >
+        <div style={{
+          fontWeight: isToday ? 700 : 400,
+          color: isRed ? '#ff4d4f' : isSaturday ? '#1677ff' : undefined,
+          marginBottom: 2,
+        }}>
+          {value.date()}
+        </div>
+        {holiday && (
+          <div style={{ fontSize: 9, color: '#ff4d4f', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {holiday}
+          </div>
+        )}
+        {listData.slice(0, 2).map((item) => (
+          <div key={item.id} style={{ fontSize: 10, padding: '1px 4px', borderRadius: 4, background: '#e6f4ff', color: '#1677ff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 2 }}>
+            {item.time} {item.title}
+          </div>
+        ))}
+        {listData.length > 2 && <Text type="secondary" style={{ fontSize: 10 }}>+{listData.length - 2}개</Text>}
+      </div>
+    );
+  };
+
+  const headerRender = ({ value, onChange }) => {
+    const year = value.year();
+    const month = value.month();
+    return (
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 16px' }}>
+        <Button onClick={() => { const newVal = value.subtract(1, 'month'); onChange(newVal); setCurrentMonth(newVal); }}>{'<'}</Button>
+        <Text strong style={{ fontSize: 16 }}>{year}년 {month + 1}월</Text>
+        <Button onClick={() => { const newVal = value.add(1, 'month'); onChange(newVal); setCurrentMonth(newVal); }}>{'>'}</Button>
+      </div>
+    );
   };
 
   if (isGuest) {
     return (
       <div>
-        <Row gutter={[16, 16]}>
-          <Col xs={24}>
-            <Title level={3} style={{ marginBottom: 8 }}>
-              <CalendarOutlined /> 가족 일정
-            </Title>
-            <Paragraph>게스트는 일정 DB를 불러오지 않고 기본 화면만 확인할 수 있습니다.</Paragraph>
-          </Col>
-
-          <Col xs={24}>
-            <Card style={{ borderRadius: 16 }} styles={{ body: { padding: 20 } }}>
-              <Alert
-                title="일정 보기 안내"
-                description="멤버 계정으로 로그인하면 가족 일정 목록을 확인하고, 일정을 등록 및 삭제할 수 있습니다."
-                type="info"
-                showIcon
-              />
-            </Card>
-          </Col>
-
-          <Col xs={24} lg={16}>
-            <Card style={{ borderRadius: 16 }} styles={{ body: { padding: 16 } }}>
-              <Calendar fullscreen={false} value={selectedDate} onSelect={(date) => setSelectedDate(dayjs(date))} />
-            </Card>
-          </Col>
-
-          <Col xs={24} lg={8}>
-            <Card style={{ borderRadius: 16 }} styles={{ body: { padding: 20 } }}>
-              <Title level={5}>{selectedDate.format('YYYY년 M월 D일')}</Title>
-              <Paragraph>게스트는 일정을 등록하거나 삭제할 수 없습니다.</Paragraph>
-            </Card>
-          </Col>
-        </Row>
+        <Title level={3}><CalendarOutlined /> 가족 일정</Title>
+        <Alert description="멤버 계정으로 로그인하면 가족 일정을 확인하고 등록할 수 있습니다." type="info" showIcon style={{ marginBottom: 16 }} />
+        <Card style={{ borderRadius: 16 }}>
+          <Calendar fullscreen={false} locale={locale} value={selectedDate} onSelect={(date) => setSelectedDate(dayjs(date))} headerRender={headerRender} />
+        </Card>
       </div>
     );
   }
@@ -147,85 +249,83 @@ const Schedule = () => {
     <div>
       <Row gutter={[16, 16]}>
         <Col xs={24}>
-          <Title level={3} style={{ marginBottom: 8 }}>
-            <CalendarOutlined /> 가족 일정
-          </Title>
-          <Paragraph>달력에서 가족 일정을 등록하고, 선택한 날짜의 일정을 확인할 수 있습니다.</Paragraph>
-        </Col>
-
-        <Col xs={24} lg={16}>
           <Card style={{ borderRadius: 16 }} styles={{ body: { padding: 16 } }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Title level={3} style={{ margin: 0 }}><CalendarOutlined /> 가족 일정</Title>
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowAddModal(true)}>일정 추가</Button>
+            </div>
             {isLoading ? (
-              <div style={{ padding: 40, textAlign: 'center' }}>
-                <Spin />
-              </div>
+              <div style={{ padding: 40, textAlign: 'center' }}><Spin /></div>
             ) : (
               <Calendar
                 fullscreen={false}
+                locale={locale}
                 value={selectedDate}
                 onSelect={(date) => setSelectedDate(dayjs(date))}
-                dateCellRender={dateCellRender}
+                fullCellRender={dateFullCellRender}
+                headerRender={headerRender}
               />
             )}
           </Card>
         </Col>
+      </Row>
 
-        <Col xs={24} lg={8}>
-          <Card style={{ borderRadius: 16 }} styles={{ body: { padding: 20 } }}>
-            <Title level={5}>{selectedDate.format('YYYY년 M월 D일')}</Title>
-            <Paragraph>선택된 날짜 일정</Paragraph>
-
-            <List
-              dataSource={todayItems}
-              locale={{ emptyText: '선택한 날짜에 일정이 없습니다.' }}
-              renderItem={(item) => {
-                const canDelete = user.role === 'admin' || item.user_id === user.id;
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Col xs={24}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <Title level={4} style={{ margin: 0 }}>{selectedDate.format('YYYY년 M월 D일')} 일정</Title>
+            <Text type="secondary">{todayItems.length}개</Text>
+          </div>
+          {todayItems.length ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
+              {todayItems.map((item) => {
+                const isOwner = String(item.user_id) === String(user?.id);
+                const canEdit = user?.role === 'admin' || isOwner;
                 return (
-                  <List.Item
-                    actions={
-                      canDelete
-                        ? [
-                            <Popconfirm
-                              key="delete"
-                              title="정말 삭제하시겠습니까?"
-                              onConfirm={() => handleDelete(item.id)}
-                              okText="삭제"
-                              cancelText="취소"
-                            >
-                              <Button danger size="small" loading={isDeleting}>
-                                삭제
-                              </Button>
-                            </Popconfirm>,
-                          ]
-                        : []
-                    }
+                  <Card
+                    key={item.id}
+                    style={{ borderRadius: 16, border: '1px solid #f0f0f0' }}
+                    styles={{ body: { padding: 20 } }}
+                    actions={canEdit ? [
+                      <Button key="edit" type="text" icon={<EditOutlined />} onClick={() => handleEditOpen(item)}>수정</Button>,
+                      <Popconfirm key="delete" title="삭제하시겠습니까?" onConfirm={() => removeSchedule(item.id)} okText="삭제" cancelText="취소">
+                        <Button type="text" danger icon={<DeleteOutlined />} loading={isDeleting}>삭제</Button>
+                      </Popconfirm>,
+                    ] : []}
                   >
-                    <List.Item.Meta title={item.title} description={item.time} />
-                  </List.Item>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                      <ClockCircleOutlined style={{ color: '#1677ff' }} />
+                      <Text type="secondary" style={{ fontSize: 13 }}>{item.time}</Text>
+                    </div>
+                    <Title level={5} style={{ margin: 0, marginBottom: 4 }}>{item.title}</Title>
+                    <Text type="secondary">{item.description || '가족 일정'}</Text>
+                  </Card>
                 );
-              }}
-              style={{ marginBottom: 24 }}
-            />
-
-            <Paragraph strong>일정 추가</Paragraph>
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-              <Input
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                placeholder="일정 제목"
-              />
-              <Input
-                value={time}
-                onChange={(event) => setTime(event.target.value)}
-                placeholder="시간 (예: 18:00)"
-              />
-              <Button type="primary" icon={<PlusOutlined />} onClick={handleAddEvent} loading={isCreating} block>
-                일정 추가
-              </Button>
-            </Space>
-          </Card>
+              })}
+            </div>
+          ) : (
+            <Card style={{ borderRadius: 16, textAlign: 'center' }} styles={{ body: { padding: 48 } }}>
+              <CalendarOutlined style={{ fontSize: 32, color: '#d9d9d9', marginBottom: 12 }} />
+              <Paragraph type="secondary">선택한 날짜에 일정이 없습니다.</Paragraph>
+              <Button type="primary" icon={<PlusOutlined />} onClick={() => setShowAddModal(true)}>일정 추가</Button>
+            </Card>
+          )}
         </Col>
       </Row>
+
+      <Modal title={`${selectedDate.format('M월 D일')} 일정 추가`} open={showAddModal} onCancel={() => setShowAddModal(false)} onOk={handleAddEvent} okText="추가" cancelText="취소" confirmLoading={isCreating}>
+        <Space direction="vertical" style={{ width: '100%', marginTop: 16 }}>
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="일정 제목" />
+          <Input value={time} onChange={(e) => setTime(e.target.value)} placeholder="시간 (예: 18:00)" />
+        </Space>
+      </Modal>
+
+      <Modal title="일정 수정" open={!!editItem} onCancel={() => setEditItem(null)} onOk={handleEditSave} okText="저장" cancelText="취소" confirmLoading={isUpdating}>
+        <Space direction="vertical" style={{ width: '100%', marginTop: 16 }}>
+          <Input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} placeholder="일정 제목" />
+          <Input value={editTime} onChange={(e) => setEditTime(e.target.value)} placeholder="시간 (예: 18:00)" />
+        </Space>
+      </Modal>
     </div>
   );
 };

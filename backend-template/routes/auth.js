@@ -118,6 +118,10 @@ router.put('/users/:id/role', authenticateToken, async (req, res) => {
     return res.status(400).json({ error: '유효하지 않은 역할입니다.' });
   }
 
+  if (parseInt(req.params.id, 10) === req.user.id) {
+    return res.status(403).json({ error: '자기 자신의 역할은 변경할 수 없습니다.' });
+  }
+
   try {
     const [result] = await pool.query('UPDATE users SET role = ? WHERE id = ?', [role, req.params.id]);
     if (result.affectedRows === 0) {

@@ -1,12 +1,13 @@
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Card, Row, Col, Typography, Button, Result, Spin, List, Tag, Space, message, Divider } from 'antd';
+import { Card, Row, Col, Typography, Button, Result, Spin, List, Tag, Space, message, Divider, Select } from 'antd';
 import { DatabaseOutlined, CalendarOutlined, MessageOutlined, HomeOutlined, TeamOutlined } from '@ant-design/icons';
 import { getPosts, getSchedules, getChats, getUsers, updateUserRole } from '../api/apiClient';
 import useAuthStore from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 
 const { Title, Paragraph, Text } = Typography;
+const { Option } = Select;
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -59,14 +60,16 @@ const Admin = () => {
   const approvedUsers = users.filter((account) => account.role === 'member' || account.role === 'admin').length;
   const accessRate = totalUsers ? Math.round((approvedUsers / totalUsers) * 100) : 0;
 
-  const { mutate: promoteUser, isLoading: isPromoting } = useMutation({
-    mutationFn: ({ id }) => updateUserRole(id, 'member'),
+  const { mutate: updateRole, isLoading: isUpdatingRole } = useMutation({
+    mutationFn: ({ id, role }) => updateUserRole(id, role),
     onSuccess: () => {
-      message.success('게스트를 멤버로 승급했습니다.');
-      queryClient.invalidateQueries(['users']);
+      message.success('사용자 역할을 변경했습니다.');
     },
     onError: (error) => {
       message.error(error.message || '역할 변경에 실패했습니다.');
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
     },
   });
 
@@ -142,36 +145,40 @@ const Admin = () => {
               <List
                 dataSource={users}
                 loading={usersLoading}
-                renderItem={(account) => (
-                  <List.Item
-                    actions={
-                      account.role === 'guest'
-                        ? [
-                            <Button
-                              type="primary"
-                              key="promote"
-                              loading={isPromoting}
-                              onClick={() => promoteUser({ id: account.id })}
-                            >
-                              멤버로 승급
-                            </Button>,
-                          ]
-                        : []
-                    }
-                  >
-                    <List.Item.Meta
-                      title={account.username}
-                      description={
-                        <Space size="small">
-                          <Tag color={account.role === 'admin' ? 'red' : account.role === 'member' ? 'green' : 'default'}>
-                            {account.role}
-                          </Tag>
-                          <Text type="secondary">{new Date(account.created_at).toLocaleDateString()}</Text>
-                        </Space>
-                      }
-                    />
-                  </List.Item>
-                )}
+                renderItem={(account) => {
+                  const isSelf = account.id === user.id;
+                  return (
+                    <List.Item
+                      actions={[
+                        <Select
+                          key="role"
+                          value={account.role}
+                          onChange={(value) => updateRole({ id: account.id, role: value })}
+                          style={{ width: 140 }}
+                          disabled={isSelf}
+                          loading={isUpdatingRole}
+                        >
+                          <Option value="guest">guest</Option>
+                          <Option value="member">member</Option>
+                          <Option value="admin">admin</Option>
+                        </Select>,
+                      ]}
+                    >
+                      <List.Item.Meta
+                        title={account.username}
+                        description={
+                          <Space size="small">
+                            <Tag color={account.role === 'admin' ? 'red' : account.role === 'member' ? 'green' : 'default'}>
+                              {account.role}
+                            </Tag>
+                            <Text type="secondary">{new Date(account.created_at).toLocaleDateString()}</Text>
+                            {isSelf && <Text type="secondary">(본인 계정)</Text>}
+                          </Space>
+                        }
+                      />
+                    </List.Item>
+                  );
+                }}
                 locale={{ emptyText: '등록된 사용자가 없습니다.' }}
               />
             )}

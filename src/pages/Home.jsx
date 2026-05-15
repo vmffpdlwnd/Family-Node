@@ -5,10 +5,19 @@ import { Row, Col, Card, Typography, Button, Spin } from 'antd';
 import useAuthStore from '../store/authStore';
 import { getPosts, getSchedules, getChats, getUsers } from '../api/apiClient';
 
-const { Title, Paragraph, Text } = Typography;
+const { Title, Text } = Typography;
+
+const parseKSTDate = (dateString) => {
+  if (!dateString) return new Date();
+  let normalized = dateString;
+  if (normalized.endsWith('Z')) normalized = normalized.slice(0, -1);
+  normalized = normalized.replace(/([+-]\d{2}:?\d{2})$/, '');
+  return new Date(normalized);
+};
 
 const Home = () => {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
 
   const { data: posts = [], isLoading: postsLoading } = useQuery({
     queryKey: ['posts'],
@@ -23,22 +32,21 @@ const Home = () => {
     queryFn: getChats,
     refetchInterval: 10000,
   });
-
-  const latestPost = useMemo(() => posts[0], [posts]);
-  const nextSchedule = useMemo(() => {
-    if (!schedules.length) return null;
-    return [...schedules].sort((a, b) => new Date(a.start_date) - new Date(b.start_date))[0];
-  }, [schedules]);
-  const latestChat = useMemo(() => (chats.length ? chats[chats.length - 1] : null), [chats]);
-  const { user } = useAuthStore();
-  const { data: users = [], isLoading: usersLoading } = useQuery({
+  const { data: users = [] } = useQuery({
     queryKey: ['home-users'],
     queryFn: getUsers,
     enabled: user?.role === 'admin',
   });
 
-  const totalUsers = users.length;
-  const approvedUsers = users.filter((account) => account.role === 'member' || account.role === 'admin').length;
+  const latestPost = useMemo(() => (posts || [])[0], [posts]);
+  const nextSchedule = useMemo(() => {
+    if (!schedules || !schedules.length) return null;
+    return [...schedules].sort((a, b) => new Date(a.start_date) - new Date(b.start_date))[0];
+  }, [schedules]);
+  const latestChat = useMemo(() => ((chats || []).length ? chats[chats.length - 1] : null), [chats]);
+
+  const totalUsers = (users || []).length;
+  const approvedUsers = (users || []).filter((account) => account.role === 'member' || account.role === 'admin').length;
   const accessRate = totalUsers ? Math.round((approvedUsers / totalUsers) * 100) : 0;
 
   const loading = postsLoading || schedulesLoading || chatsLoading;
@@ -72,13 +80,8 @@ const Home = () => {
         <Col xs={24} md={8}>
           <Card style={{ borderRadius: 16, minHeight: 300 }} styles={{ body: { padding: 24 } }}>
             <Title level={4}>최신 게시글</Title>
-            <Paragraph type="secondary" style={{ marginBottom: 18 }}>
-              클라우드 백엔드에서 로드된 최신 게시글입니다.
-            </Paragraph>
             {loading ? (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
-                <Spin />
-              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Spin /></div>
             ) : latestPost ? (
               <div>
                 <Text strong>{latestPost.title}</Text>
@@ -97,14 +100,12 @@ const Home = () => {
           <Card style={{ borderRadius: 16, minHeight: 300 }} styles={{ body: { padding: 24 } }}>
             <Title level={4}>예정된 일정</Title>
             {loading ? (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
-                <Spin />
-              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Spin /></div>
             ) : nextSchedule ? (
               <div>
                 <Text strong>{nextSchedule.title}</Text>
                 <div style={{ marginTop: 12, color: '#666' }}>
-                  {new Date(nextSchedule.start_date).toLocaleString()}
+                  {parseKSTDate(nextSchedule.start_date).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
                 </div>
               </div>
             ) : (
@@ -120,13 +121,13 @@ const Home = () => {
           <Card style={{ borderRadius: 16, minHeight: 300 }} styles={{ body: { padding: 24 } }}>
             <Title level={4}>최근 채팅</Title>
             {loading ? (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
-                <Spin />
-              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Spin /></div>
             ) : latestChat ? (
               <div>
                 <Text strong>{latestChat.message?.slice(0, 60)}</Text>
-                <div style={{ marginTop: 12, color: '#666' }}>{new Date(latestChat.created_at).toLocaleString()}</div>
+                <div style={{ marginTop: 12, color: '#666' }}>
+                  {parseKSTDate(latestChat.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' })}
+                </div>
               </div>
             ) : (
               <Text type="secondary">채팅 기록이 없습니다.</Text>
