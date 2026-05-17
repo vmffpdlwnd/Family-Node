@@ -14,10 +14,7 @@ const { Title, Paragraph, Text } = Typography;
 
 const fetchHolidays = async (year, month) => {
   try {
-    const token = getAuthToken();
-    const res = await fetch(`/api/holidays?year=${year}&month=${month}`, {
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-    });
+    const res = await fetch(`/api/holidays?year=${year}&month=${month}`);
     return await res.json();
   } catch {
     return {};
@@ -37,7 +34,7 @@ const Schedule = () => {
   const [editTime, setEditTime] = useState('');
 
   const isGuest = !user || user.role === 'guest';
-  const canAccess = user && (user.role === 'member' || user.role === 'admin');
+  const canAccess = !!user && (user.role === 'member' || user.role === 'admin');
 
   const { data: holidays = {} } = useQuery({
     queryKey: ['holidays', currentMonth.year(), currentMonth.month() + 1],
@@ -212,9 +209,16 @@ const Schedule = () => {
     return (
       <div>
         <Title level={3}><CalendarOutlined /> 가족 일정</Title>
-        <Alert description="멤버 계정으로 로그인하면 가족 일정을 확인하고 등록할 수 있습니다." type="info" showIcon style={{ marginBottom: 16 }} />
+        <Alert description="멤버 계정으로 로그인하면 가족 일정을 등록하고 상세 일정을 확인할 수 있습니다. 공휴일은 로그인하지 않아도 볼 수 있습니다." type="info" showIcon style={{ marginBottom: 16 }} />
         <Card style={{ borderRadius: 16 }}>
-          <Calendar fullscreen={false} locale={locale} value={selectedDate} onSelect={(date) => { const d = dayjs(date); setSelectedDate(d); setCurrentMonth(d); }} headerRender={headerRender} />
+          <Calendar
+            fullscreen={false}
+            locale={locale}
+            value={selectedDate}
+            onSelect={(date) => { const d = dayjs(date); setSelectedDate(d); setCurrentMonth(d); }}
+            fullCellRender={dateFullCellRender(currentMonth)}
+            headerRender={headerRender}
+          />
         </Card>
       </div>
     );

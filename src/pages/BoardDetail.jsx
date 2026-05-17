@@ -14,6 +14,7 @@ import {
   Avatar,
   message,
   Divider,
+  Popconfirm,
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -23,7 +24,7 @@ import {
   DeleteOutlined,
   SendOutlined,
 } from '@ant-design/icons';
-import { getPost, getComments, createComment, deleteComment, updatePost } from '../api/apiClient';
+import { getPost, getComments, createComment, deleteComment, updatePost, deletePost } from '../api/apiClient';
 import useAuthStore from '../store/authStore';
 import RichTextEditor from '../components/RichTextEditor';
 
@@ -37,7 +38,6 @@ const BoardDetail = () => {
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const isGuest = !user || user.role === 'guest';
-  const canAccess = user && (user.role === 'member' || user.role === 'admin');
 
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState('');
@@ -50,13 +50,13 @@ const BoardDetail = () => {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['post', id],
     queryFn: () => getPost(id),
-    enabled: canAccess && !!id,
+    enabled: !!id,
   });
 
   const { data: comments = [], isLoading: commentsLoading } = useQuery({
     queryKey: ['comments', id],
     queryFn: () => getComments(id),
-    enabled: canAccess && !!id,
+    enabled: !!id,
   });
 
   const { mutate: savePost, isLoading: isSaving } = useMutation({
@@ -69,6 +69,18 @@ const BoardDetail = () => {
     },
     onError: (error) => {
       message.error(error.message || '게시글 수정에 실패했습니다.');
+    },
+  });
+
+  const { mutate: removePost, isLoading: isDeletingPost } = useMutation({
+    mutationFn: (postId) => deletePost(postId),
+    onSuccess: () => {
+      message.success('게시글이 삭제되었습니다.');
+      queryClient.invalidateQueries(['posts']);
+      navigate('/board');
+    },
+    onError: (error) => {
+      message.error(error.message || '게시글 삭제에 실패했습니다.');
     },
   });
 
@@ -156,22 +168,6 @@ const BoardDetail = () => {
     ];
   };
 
-  if (isGuest) {
-    return (
-      <div style={{ padding: 24 }}>
-        <Result
-          status="403"
-          title="게시글을 확인할 수 없습니다"
-          subTitle="로그인한 멤버 계정으로 접속해야 게시글 내용을 볼 수 있습니다."
-          extra={[
-            <Button type="primary" key="login" onClick={() => navigate('/login')}>
-              로그인하러 가기
-            </Button>,
-          ]}
-        />
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (
@@ -181,7 +177,7 @@ const BoardDetail = () => {
     );
   }
 
-  if (isError) {
+  if (isError || !data) {
     return (
       <div style={{ padding: 24 }}>
         <Result
@@ -216,6 +212,18 @@ const BoardDetail = () => {
               >
                 {isEditing ? '편집 취소' : '게시글 수정'}
               </Button>
+            )}
+            {canEdit && !isEditing && (
+              <Popconfirm
+                title="게시글을 삭제하시겠습니까?"
+                okText="삭제"
+                cancelText="취소"
+                onConfirm={() => removePost(id)}
+              >
+                <Button danger icon={<DeleteOutlined />} loading={isDeletingPost}>
+                  삭제
+                </Button>
+              </Popconfirm>
             )}
             {isEditing && (
               <Button type="primary" icon={<SaveOutlined />} loading={isSaving} onClick={handleSave}>
@@ -326,7 +334,8 @@ const BoardDetail = () => {
               value={commentText}
               onChange={(event) => setCommentText(event.target.value)}
               rows={4}
-              placeholder="댓글을 입력하세요."
+              placeholder={user && user.role !== 'guest' ? '댓글을 입력하세요.' : '로그인 후 댓글을 작성할 수 있습니다.'}
+              disabled={!user || user.role === 'guest'}
             />
             <Space style={{ marginTop: 12 }}>
               <Button
@@ -334,6 +343,7 @@ const BoardDetail = () => {
                 icon={<SendOutlined />}
                 loading={isPostingComment}
                 onClick={handleCommentSubmit}
+                disabled={!user || user.role === 'guest'}
               >
                 등록
               </Button>

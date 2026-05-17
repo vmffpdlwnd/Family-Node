@@ -18,14 +18,17 @@ const parseKSTDate = (dateString) => {
 const Home = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
+  const canAccess = !!user && user.role !== 'guest';
 
   const { data: posts = [], isLoading: postsLoading } = useQuery({
     queryKey: ['posts'],
     queryFn: getPosts,
+    enabled: canAccess,
   });
   const { data: schedules = [], isLoading: schedulesLoading } = useQuery({
     queryKey: ['schedules'],
     queryFn: getSchedules,
+    enabled: canAccess,
   });
   const { data: chats = [], isLoading: chatsLoading } = useQuery({
     queryKey: ['chats'],
@@ -35,7 +38,7 @@ const Home = () => {
   const { data: users = [] } = useQuery({
     queryKey: ['home-users'],
     queryFn: getUsers,
-    enabled: user?.role === 'admin',
+    enabled: !!(user?.role === 'admin'),
   });
 
   const latestPost = useMemo(() => (posts || [])[0], [posts]);
@@ -82,10 +85,11 @@ const Home = () => {
             <Title level={4}>최신 게시글</Title>
             {loading ? (
               <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Spin /></div>
+            ) : !canAccess ? (
+              <Text type="secondary">계정이 확인되어야 최신 게시글을 볼 수 있습니다.</Text>
             ) : latestPost ? (
               <div>
                 <Text strong>{latestPost.title}</Text>
-                <div style={{ marginTop: 12, color: '#666' }}>{latestPost.content?.slice(0, 100)}...</div>
               </div>
             ) : (
               <Text type="secondary">게시글이 아직 없습니다.</Text>
@@ -101,6 +105,8 @@ const Home = () => {
             <Title level={4}>예정된 일정</Title>
             {loading ? (
               <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Spin /></div>
+            ) : !canAccess ? (
+              <Text type="secondary">계정이 확인되어야 일정을 볼 수 있습니다.</Text>
             ) : nextSchedule ? (
               <div>
                 <Text strong>{nextSchedule.title}</Text>
