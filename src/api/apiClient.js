@@ -46,6 +46,7 @@ export const getMe = () => request('/auth/me');
 export const getPosts = () => request('/posts');
 export const getPost = (postId) => request(`/posts/${postId}`);
 export const createPost = (payload) => request('/posts', { method: 'POST', body: payload });
+export const updatePost = (postId, payload) => request(`/posts/${postId}`, { method: 'PUT', body: payload });
 export const deletePost = (postId) => request(`/posts/${postId}`, { method: 'DELETE' });
 
 export const getSchedules = () => request('/schedules');
@@ -64,3 +65,7 @@ export const deleteChat = (chatId) => request(`/chats/${chatId}`, { method: 'DEL
 export const getUsers = () => request('/auth/users');
 export const updateUserRole = (userId, role) => request(`/auth/users/${encodeURIComponent(userId)}/role`, { method: 'PUT', body: { role } });
 export const updateProfile = (payload) => request('/auth/me', { method: 'PUT', body: payload });
+
+export const getComments = (postId) => request(`/comments?post_id=${postId}`);
+export const createComment = (payload) => request('/comments', { method: 'POST', body: payload });
+export const deleteComment = (commentId) => request(`/comments/${commentId}`, { method: 'DELETE' });

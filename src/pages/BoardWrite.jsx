@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { createPost } from '../api/apiClient';
 import useAuthStore from '../store/authStore';
 
-const { Title, Paragraph } = Typography;
+const { Title, Paragraph, Text } = Typography;
 const { Option } = Select;
 
 const BoardWrite = () => {
@@ -15,6 +15,8 @@ const BoardWrite = () => {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('일반');
   const [content, setContent] = useState('');
+  const [imageUrl, setImageUrl] = useState('');
+  const [imagePreviewError, setImagePreviewError] = useState(false);
 
   const canWrite = user && user.role !== 'guest';
 
@@ -36,11 +38,17 @@ const BoardWrite = () => {
       return;
     }
 
-    mutate({
+    const payload = {
       title: title.trim(),
       content: content.trim(),
       category,
-    });
+    };
+
+    if (imageUrl.trim()) {
+      payload.image_url = imageUrl.trim();
+    }
+
+    mutate(payload);
   };
 
   if (!canWrite) {
@@ -79,10 +87,33 @@ const BoardWrite = () => {
             <Option value="생활">생활</Option>
           </Select>
 
+          <Input
+            value={imageUrl}
+            onChange={(event) => {
+              setImageUrl(event.target.value);
+              setImagePreviewError(false);
+            }}
+            placeholder="이미지 URL을 입력하세요 (옵션)"
+          />
+
+          {imageUrl.trim() && (
+            <div style={{ marginTop: 12 }}>
+              <img
+                src={imageUrl}
+                alt="미리보기"
+                style={{ maxWidth: '100%', maxHeight: 300, borderRadius: 12, objectFit: 'contain' }}
+                onError={() => setImagePreviewError(true)}
+              />
+              {imagePreviewError && (
+                <Text type="danger">이미지를 불러올 수 없습니다. URL을 확인해 주세요.</Text>
+              )}
+            </div>
+          )}
+
           <Input.TextArea
             value={content}
             onChange={(event) => setContent(event.target.value)}
-            rows={10}
+            rows={12}
             placeholder="내용을 입력하세요"
           />
 
