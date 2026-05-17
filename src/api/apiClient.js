@@ -66,6 +66,23 @@ export const getUsers = () => request('/auth/users');
 export const updateUserRole = (userId, role) => request(`/auth/users/${encodeURIComponent(userId)}/role`, { method: 'PUT', body: { role } });
 export const updateProfile = (payload) => request('/auth/me', { method: 'PUT', body: payload });
 
+// 댓글
 export const getComments = (postId) => request(`/comments?post_id=${postId}`);
 export const createComment = (payload) => request('/comments', { method: 'POST', body: payload });
 export const deleteComment = (commentId) => request(`/comments/${commentId}`, { method: 'DELETE' });
+
+// 첨부파일 (파일 업로드는 multipart라 별도 처리)
+export const getAttachments = (postId) => request(`/uploads?post_id=${postId}`);
+export const deleteAttachment = (attachmentId) => request(`/uploads/${attachmentId}`, { method: 'DELETE' });
+
+// 파일 업로드 - fetch 직접 사용 (Content-Type을 자동으로 multipart/form-data로 설정해야 해서)
+export const uploadFiles = (postId, files) => {
+  const token = getStoredToken(); // 기존 함수 재사용
+  const formData = new FormData();
+  files.forEach((file) => formData.append('files', file));
+  return fetch(`${API_BASE_URL}/uploads?post_id=${postId}`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  }).then((res) => res.json());
+};

@@ -4,6 +4,7 @@ import { Card, Typography, Input, Select, Button, Space, message, Result } from 
 import { useNavigate } from 'react-router-dom';
 import { createPost } from '../api/apiClient';
 import useAuthStore from '../store/authStore';
+import RichTextEditor from '../components/RichTextEditor';
 
 const { Title, Paragraph, Text } = Typography;
 const { Option } = Select;
@@ -110,12 +111,9 @@ const BoardWrite = () => {
             </div>
           )}
 
-          <Input.TextArea
-            value={content}
-            onChange={(event) => setContent(event.target.value)}
-            rows={12}
-            placeholder="내용을 입력하세요"
-          />
+          <Card style={{ borderRadius: 12, padding: 0 }}>
+            <RichTextEditor value={content} onChange={setContent} />
+          </Card>
 
           <Space>
             <Button type="primary" onClick={handleSubmit} loading={isLoading}>

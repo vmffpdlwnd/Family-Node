@@ -6,7 +6,7 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/ko';
 import locale from 'antd/es/date-picker/locale/ko_KR';
 import { getSchedules, createSchedule, deleteSchedule, updateSchedule as updateScheduleApi } from '../api/apiClient';
-import useAuthStore from '../store/authStore';
+import useAuthStore, { getAuthToken } from '../store/authStore';
 
 dayjs.locale('ko');
 
@@ -14,7 +14,10 @@ const { Title, Paragraph, Text } = Typography;
 
 const fetchHolidays = async (year, month) => {
   try {
-    const res = await fetch(`/api/holidays?year=${year}&month=${month}`);
+    const token = getAuthToken();
+    const res = await fetch(`/api/holidays?year=${year}&month=${month}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     return await res.json();
   } catch {
     return {};

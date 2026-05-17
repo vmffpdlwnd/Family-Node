@@ -25,6 +25,7 @@ import {
 } from '@ant-design/icons';
 import { getPost, getComments, createComment, deleteComment, updatePost } from '../api/apiClient';
 import useAuthStore from '../store/authStore';
+import RichTextEditor from '../components/RichTextEditor';
 
 const { Title, Paragraph, Text } = Typography;
 const { TextArea } = Input;
@@ -232,12 +233,9 @@ const BoardDetail = () => {
               <Option value="공지">공지</Option>
               <Option value="생활">생활</Option>
             </Select>
-            <TextArea
-              value={content}
-              onChange={(event) => setContent(event.target.value)}
-              rows={10}
-              placeholder="내용을 입력하세요"
-            />
+            <Card style={{ borderRadius: 12, padding: 0 }}>
+              <RichTextEditor value={content} onChange={setContent} />
+            </Card>
             <Input
               value={imageUrl}
               onChange={(event) => {
@@ -282,7 +280,10 @@ const BoardDetail = () => {
               </div>
             )}
             <Card type="inner" style={{ whiteSpace: 'pre-wrap' }}>
-              <Paragraph>{data.content}</Paragraph>
+              <div
+                dangerouslySetInnerHTML={{ __html: data.content || '' }}
+                style={{ minHeight: 120 }}
+              />
             </Card>
           </>
         )}
